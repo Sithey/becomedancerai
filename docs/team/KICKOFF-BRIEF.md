@@ -13,7 +13,7 @@ Constraints:
 - Team: <N> students, mostly beginners, coding with AI agents (mostly Antigravity/Gemini).
   I'm the only experienced developer; I build the base, they do small issues.
 - Stack: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui, Postgres + Prisma,
-  self-hosted. LLM API available: <WHICH>.
+  self-hosted. LLM API: OpenRouter (any model, OpenAI-compatible).
 - Users are in the room: students at a college programming-club hackathon; judges are from
   the club too.
 - Must have: one demo flow that works end to end and can be shown in 90 seconds.

@@ -9,7 +9,9 @@ For Raphael. Students: see [ONBOARDING.md](../ONBOARDING.md) and
       usernames, add them as collaborators (write access).
 - [ ] Postgres on your server: a `dev` database (shared by the team) and a `prod` one (demo),
       strong passwords, SSL. Test a connection from outside your network.
-- [ ] Pick the LLM API for the project (for [KICKOFF-BRIEF.md](KICKOFF-BRIEF.md)).
+- [ ] Ask the organizers if they provide API credits. Otherwise: OpenRouter with prepaid
+      credits (~$10) and a dedicated key with a credit limit. Send the key privately, like
+      `DATABASE_URL`. Update the LLM line in [KICKOFF-BRIEF.md](KICKOFF-BRIEF.md) if it changes.
 - [ ] Read the hackathon rules: what may be prepared in advance, repo visibility at
       submission, deadlines, judging criteria.
 - [ ] **Antigravity check** (couldn't be tested on the Mac). Open the repo in Antigravity (or

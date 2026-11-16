@@ -131,6 +131,10 @@ Every PR adds exactly one new file in `docs/log/`, using the format in
 
 Never commit API keys, tokens or `.env` files. Document needed variables in `.env.example`.
 
+- AI and other API calls only from server code (`lib/server/`, route handlers), never from
+  the browser.
+- Never put a key in a `NEXT_PUBLIC_` variable: those are sent to the browser.
+
 ## Language
 
 Everything written in the repo is in English: code, comments, commit messages, PRs, docs.
