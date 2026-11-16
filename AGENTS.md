@@ -30,6 +30,10 @@ in the team is in English.
 The Superpowers skills live in `.agents/skills/`. **These project rules take precedence over
 the skills**, including the `using-superpowers` instruction to invoke a skill before every task.
 
+- **Team lead exception:** Raphael (team lead) builds the base project with the full
+  Superpowers flow (brainstorming → spec → plan → execution). Hackathon mode does not apply
+  to Raphael. It is turned on only by Raphael's local, git-ignored `CLAUDE.local.md`; never
+  assume it otherwise. Everything below applies to everyone else.
 - **Small task** (one issue: a fix, a tweak, a small feature): do NOT brainstorm and do NOT
   write spec or plan files. Read the issue, make the change, verify it.
   - Bug: use `systematic-debugging`. Find the root cause before changing code.
