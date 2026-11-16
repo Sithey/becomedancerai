@@ -1,5 +1,7 @@
 # Hackathon Team Kit Implementation Plan
 
+> Status: done (2026-11-16). This is the plan that built the team kit, kept for the record. Agents: there is nothing left to do here.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A ready-to-push repo that guides every team member's AI agent the same way, ships Superpowers in-repo, enforces PR-only changes, and onboards beginner students.
@@ -8,7 +10,7 @@
 
 **Tech Stack:** git, GitHub (Pro via Education), Markdown. Verification with `claude -p` and `codex exec` (both installed locally); Antigravity not installed here.
 
-**Spec:** `docs/superpowers/specs/2026-11-16-hackathon-team-kit-design.md`
+**Spec:** `docs/team/kit/design.md`
 
 ## Global Constraints
 
@@ -34,11 +36,11 @@
 **Files:**
 - Create: `.agents/skills/<15 skill folders>/`, `.agents/skills/LICENSE`, `.agents/skills/README.md` (source + version + how to update), `.gitignore`, `.gitattributes`
 
-- [ ] **Step 1:** `git init -b main` in `/Users/raphael/Documents/Development/hackaton/hackaton-19-11-26` (one folder per hackathon; the parent `hackaton/` stays a plain folder).
-- [ ] **Step 2:** Copy the 15 skill folders and `LICENSE` from the pinned path.
-- [ ] **Step 3:** `.gitattributes`: `* text=auto eol=lf`. `.gitignore`: `.DS_Store`, `node_modules/`, `.env*`, `!.env.example`.
-- [ ] **Step 4: Verify** — `ls .agents/skills | grep -vc -E 'LICENSE|README'` → `15`; `grep -L '^name:' .agents/skills/*/SKILL.md` → empty.
-- [ ] **Step 5: Commit** `chore: vendor superpowers 7.0.2 skills`.
+- [x] **Step 1:** `git init -b main` in `/Users/raphael/Documents/Development/hackaton/hackaton-19-11-26` (one folder per hackathon; the parent `hackaton/` stays a plain folder).
+- [x] **Step 2:** Copy the 15 skill folders and `LICENSE` from the pinned path.
+- [x] **Step 3:** `.gitattributes`: `* text=auto eol=lf`. `.gitignore`: `.DS_Store`, `node_modules/`, `.env*`, `!.env.example`.
+- [x] **Step 4: Verify** — `ls .agents/skills | grep -vc -E 'LICENSE|README'` → `15`; `grep -L '^name:' .agents/skills/*/SKILL.md` → empty.
+- [x] **Step 5: Commit** `chore: vendor superpowers 7.0.2 skills`.
 
 ### Task 2: Agent rules + contribution workflow
 
@@ -49,28 +51,28 @@
 
 Hackathon mode must say: issue-sized task → no spec/plan files, no brainstorm; bug → `systematic-debugging`; before PR → `verification-before-completion`; bigger than one issue → ask Raphael, then full Superpowers flow. These project rules take precedence over the `using-superpowers` skill.
 
-- [ ] **Step 1:** Write the files.
-- [ ] **Step 2: Verify** — `grep -c -E '^## ' AGENTS.md` ≥ 8; `grep -E 'systematic-debugging|verification-before-completion|precedence' AGENTS.md` → 3 hits; PR template contains `docs/log/`, `screenshot`, `protected`; `docs/log/README.md` shows the filename pattern with `<branch>`.
-- [ ] **Step 3: Commit** `docs: add shared agent rules and contribution workflow`.
+- [x] **Step 1:** Write the files.
+- [x] **Step 2: Verify** — `grep -c -E '^## ' AGENTS.md` ≥ 8; `grep -E 'systematic-debugging|verification-before-completion|precedence' AGENTS.md` → 3 hits; PR template contains `docs/log/`, `screenshot`, `protected`; `docs/log/README.md` shows the filename pattern with `<branch>`.
+- [x] **Step 3: Commit** `docs: add shared agent rules and contribution workflow`.
 
 ### Task 3: Onboarding + team docs
 
 **Files:**
 - Create: `README.md`, `docs/ONBOARDING.md` (before-Thursday checklist; Antigravity setup with student plan; first PR walkthrough; Codex and Claude Code sections, Claude section says install the plugin, repo copy is for Codex/Antigravity), `docs/team/pre-hackathon-message.md`, `docs/team/DAY-PLAN.md` (spec phases + roles; duration/topic marked pending)
 
-- [ ] **Step 1:** Write the files.
-- [ ] **Step 2: Verify** — every relative link in `README.md` and `docs/ONBOARDING.md` resolves to an existing file.
-- [ ] **Step 3: Commit** `docs: add onboarding and day plan`.
+- [x] **Step 1:** Write the files.
+- [x] **Step 2: Verify** — every relative link in `README.md` and `docs/ONBOARDING.md` resolves to an existing file.
+- [x] **Step 3: Commit** `docs: add onboarding and day plan`.
 
 ### Task 4: Agent loading check
 
-- [ ] **Step 1:** In the repo, `claude -p "In one line each: (1) what does this project's hackathon mode say about small fixes? (2) list any skills you see from .agents/skills"`. Expected: (1) cites AGENTS.md rules. Note (2) for Review Focus 3.
-- [ ] **Step 2:** `codex exec "Without editing files: (1) summarize hackathon mode in one line, (2) can you see the systematic-debugging skill?"`. Expected: both yes.
-- [ ] **Step 3:** Fix anything that fails, commit. Antigravity check is left to Raphael (not installed here) — note it in the handoff.
+- [x] **Step 1:** In the repo, `claude -p "In one line each: (1) what does this project's hackathon mode say about small fixes? (2) list any skills you see from .agents/skills"`. Expected: (1) cites AGENTS.md rules. Note (2) for Review Focus 3.
+- [x] **Step 2:** `codex exec "Without editing files: (1) summarize hackathon mode in one line, (2) can you see the systematic-debugging skill?"`. Expected: both yes.
+- [x] **Step 3:** Fix anything that fails, commit. Antigravity check is left to Raphael (not installed here) — note it in the handoff.
 
 ### Task 5: GitHub (only after Raphael confirms)
 
-- [ ] **Step 1:** `gh repo create hackaton-19-11-26 --private --source . --push`.
-- [ ] **Step 2:** Branch protection on `main` via `gh api`: required PR, 1 approval, `require_code_owner_reviews: true` (with `.github/CODEOWNERS` = `* @Sithey`, only Raphael's approval counts), no force push, `enforce_admins: false`.
-- [ ] **Step 3: Verify** — `gh api repos/Sithey/hackaton-19-11-26/branches/main/protection` shows those values.
-- [ ] **Step 4 (when usernames arrive):** `gh api -X PUT repos/Sithey/hackaton-19-11-26/collaborators/<user> -f permission=push` per student.
+- [x] **Step 1:** `gh repo create hackaton-19-11-26 --private --source . --push`.
+- [x] **Step 2:** Branch protection on `main` via `gh api`: required PR, 1 approval, `require_code_owner_reviews: true` (with `.github/CODEOWNERS` = `* @Sithey`, only Raphael's approval counts), no force push, `enforce_admins: false`.
+- [x] **Step 3: Verify** — `gh api repos/Sithey/hackaton-19-11-26/branches/main/protection` shows those values.
+- [x] **Step 4 (when usernames arrive):** `gh api -X PUT repos/Sithey/hackaton-19-11-26/collaborators/<user> -f permission=push` per student.
