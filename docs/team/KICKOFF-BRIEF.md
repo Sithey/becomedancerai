@@ -13,20 +13,18 @@ Constraints:
 - Team: <N> students, mostly beginners, coding with AI agents (mostly Antigravity/Gemini).
   I'm the only experienced developer; I build the base, they do small issues.
 - Stack: Next.js (App Router) + TypeScript + Tailwind + shadcn/ui, Postgres + Prisma,
-  self-hosted. LLM API: OpenRouter (any model, OpenAI-compatible).
+  self-hosted.
 - Users are in the room: students at a college programming-club hackathon; judges are from
   the club too.
 - Must have: one demo flow that works end to end and can be shown in 90 seconds.
-- Avoid: hardware, data we don't have, more than one external integration, a plain chatbot
-  wrapper.
+- Avoid: hardware, data we don't have, more than one external integration.
 
 Give me 3 ideas. For each:
 1. Problem: who has it, how it hurts.
 2. The 90-second demo flow, step by step.
-3. What AI does that couldn't be done without it (if AI is used).
-4. Scope for 13 hours: must / should / won't.
-5. Main risk and how we'd cut scope if it hits.
-6. How the team splits: base (me), issues (builders), pitch.
+3. Scope for 13 hours: must / should / won't.
+4. Main risk and how we'd cut scope if it hits.
+5. How the team splits: base (me), issues (builders), pitch.
 Then recommend one and say why.
 ```
 

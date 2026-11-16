@@ -20,7 +20,7 @@ shadcn/ui.
 - Folders:
   - `app/`: pages and layouts
   - `app/api/`: HTTP endpoints (route handlers)
-  - `lib/server/`: business logic, database, AI calls (server only)
+  - `lib/server/`: business logic, database, external APIs (server only)
   - `components/ui/`: shared UI components (shadcn/ui)
 
 ## Database
@@ -131,8 +131,8 @@ Every PR adds exactly one new file in `docs/log/`, using the format in
 
 Never commit API keys, tokens or `.env` files. Document needed variables in `.env.example`.
 
-- AI and other API calls only from server code (`lib/server/`, route handlers), never from
-  the browser.
+- Calls that need a secret key only from server code (`lib/server/`, route handlers), never
+  from the browser.
 - Never put a key in a `NEXT_PUBLIC_` variable: those are sent to the browser.
 
 ## Language
