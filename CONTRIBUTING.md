@@ -3,12 +3,16 @@
 New to git or to AI coding agents? This page is for you. Raphael (team lead) builds the
 base of the project; you improve it through small pull requests (PRs).
 
+**On Windows:** run every command from these docs in **Git Bash** (installed with Git for
+Windows), not in PowerShell or cmd.
+
 ## Golden rules
 
 1. Never push to `main`. GitHub blocks it anyway.
-2. One issue = one branch = one PR. Small PRs get merged fast.
-3. Run the app and check your change works before opening the PR.
-4. Stuck for more than 15 minutes? Ask Raphael or a teammate.
+2. Never approve, merge or close PRs: only Raphael does.
+3. One issue = one branch = one PR, always started from the latest `main`.
+4. Run the app and check your change works before opening the PR.
+5. Stuck for more than 15 minutes? Ask Raphael or a teammate.
 
 ## The loop
 
@@ -20,8 +24,8 @@ On GitHub → **Issues**, pick one nobody is assigned to and assign yourself.
 
 Open the repo in your AI tool (Antigravity, Codex or Claude Code) and ask, for example:
 
-> Work on issue #12: <paste the issue text>. Follow AGENTS.md. Create the branch, make the
-> change, run the app to check it, and tell me how to test it myself.
+> Work on issue #12: <paste the issue text>. Follow AGENTS.md. Start a branch from the latest
+> main, make the change, run the app to check it, and tell me how to test it myself.
 
 Your agent knows the project rules (`AGENTS.md`) and the Superpowers skills. It will create
 a branch, make the change and verify it.
@@ -37,23 +41,21 @@ Ask your agent:
 > Merge the latest main into my branch, add my log file in docs/log/, commit, push, and give
 > me the link to open the pull request.
 
-On GitHub, fill in the PR template (what, how you tested, screenshot) and request a review
-from Raphael.
+On GitHub, fill in the PR template (what, how you tested, screenshot). Raphael is added as
+reviewer automatically.
 
-### 5. After review
+### 5. While you wait, and after review
 
-- **Changes requested:** fix them on the same branch, commit, push. The PR updates itself.
-- **Merged:** go back to `main` and start the next issue:
-
-```bash
-git checkout main
-git pull
-```
+- **Waiting for review:** don't wait. Start the next issue from `main`:
+  ask your agent "Commit my work, go back to main, pull, and start issue #<n>".
+- **Changes requested:** ask your agent to switch back to that branch, fix, commit, push.
+  The PR updates itself.
 
 ## The same thing by hand
 
 ```bash
-git checkout main && git pull
+git checkout main
+git pull
 git checkout -b fix/12-login-button
 # ...make your change...
 git add -A
@@ -74,4 +76,4 @@ git push -u origin fix/12-login-button
 - "Explain what this file does in simple terms before we change it."
 - "This button doesn't work: <what you see>. Find the root cause before fixing it."
 - "Show me what you changed and why, file by file."
-- "Is this task bigger than one issue? If yes, say so before starting."
+- "Is this task bigger than the issue describes? If yes, say so before starting."

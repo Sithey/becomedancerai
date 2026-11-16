@@ -71,6 +71,6 @@ Hackathon mode must say: issue-sized task → no spec/plan files, no brainstorm;
 ### Task 5: GitHub (only after Raphael confirms)
 
 - [ ] **Step 1:** `gh repo create hackaton-19-11-26 --private --source . --push`.
-- [ ] **Step 2:** Branch protection on `main` via `gh api`: required PR, 1 approval, no force push, `enforce_admins: false`.
+- [ ] **Step 2:** Branch protection on `main` via `gh api`: required PR, 1 approval, `require_code_owner_reviews: true` (with `.github/CODEOWNERS` = `* @Sithey`, only Raphael's approval counts), no force push, `enforce_admins: false`.
 - [ ] **Step 3: Verify** — `gh api repos/Sithey/hackaton-19-11-26/branches/main/protection` shows those values.
 - [ ] **Step 4 (when usernames arrive):** `gh api -X PUT repos/Sithey/hackaton-19-11-26/collaborators/<user> -f permission=push` per student.

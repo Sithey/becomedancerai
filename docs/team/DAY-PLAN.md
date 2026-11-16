@@ -28,6 +28,8 @@ Everyone can switch: a pitch person can pick up an issue, a builder can help reh
 - Raphael builds a walking skeleton (runs end to end, even ugly) + UI base with Claude Design.
 - Pitch & demo: problem statement, slide outline, demo script draft.
 - Research & content: user research, data/content the app needs, mockups for later screens.
+- End of phase: Raphael fills the `AGENTS.md` placeholders and pushes the base (see
+  [THURSDAY-CHECKLIST.md](THURSDAY-CHECKLIST.md)) before opening any issue.
 
 ### 3. Build (~45%)
 

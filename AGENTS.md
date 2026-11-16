@@ -8,9 +8,24 @@ Read this file fully before doing anything.
 <!-- Filled in on hackathon day: what we're building, for whom, the one demo flow that must work. -->
 _To be defined on hackathon day._
 
+## Stack
+
+One Next.js app, front and back together: Next.js (App Router) + TypeScript + Tailwind CSS +
+shadcn/ui.
+
+- The Next.js docs for the exact installed version are in `node_modules/next/dist/docs/`.
+  Check them before using a Next.js API instead of relying on memory.
+- Server Components by default. Add `"use client"` only to components that need state,
+  effects or browser APIs.
+- Folders:
+  - `app/`: pages and layouts
+  - `app/api/`: HTTP endpoints (route handlers)
+  - `lib/server/`: business logic, database, AI calls (server only)
+  - `components/ui/`: shared UI components (shadcn/ui)
+
 ## How to run
 
-<!-- Filled in once the stack is chosen: install, run, test commands. -->
+<!-- Filled in once the base exists: install, dev, build commands. -->
 _To be defined once the base project exists._
 
 ## Working with the team
@@ -21,7 +36,8 @@ in the team is in English.
 - Before acting, say in one or two plain sentences what you're going to do.
 - After acting, explain what changed and how to check it.
 - If a request breaks a rule in this file, explain the rule instead of doing it.
-- Ask before installing any new dependency.
+- Never add a dependency without Raphael's OK: every PR shares `package.json` and the
+  lockfile, the main source of merge conflicts.
 - Keep changes small and focused on the task. Don't refactor or reformat code you weren't
   asked to touch.
 
@@ -31,24 +47,30 @@ The Superpowers skills live in `.agents/skills/`. **These project rules take pre
 the skills**, including the `using-superpowers` instruction to invoke a skill before every task.
 
 - **Team lead exception:** Raphael (team lead) builds the base project with the full
-  Superpowers flow (brainstorming → spec → plan → execution). Hackathon mode does not apply
-  to Raphael. The exception is turned on only by Raphael's local, git-ignored `CLAUDE.local.md`; never
-  assume it otherwise. Everything below applies to everyone else.
-- **Small task** (one issue: a fix, a tweak, a small feature): do NOT brainstorm and do NOT
-  write spec or plan files. Read the issue, make the change, verify it.
-  - Bug: use `systematic-debugging`. Find the root cause before changing code.
-  - Before saying it's done or opening a PR: use `verification-before-completion`. Run the
-    app and check the change actually works.
-- **Bigger than one issue** (new page, new data model, changes across several areas): stop
-  and tell the user to check with Raphael (team lead) first. If Raphael agrees, use the full flow:
-  `brainstorming` → spec in `docs/superpowers/specs/` → `writing-plans` → execute.
-- Don't use `subagent-driven-development` or `dispatching-parallel-agents` unless Raphael
-  asks: they use up the AI quota fast.
+  Superpowers flow (brainstorming → spec → plan → execution). For Raphael, hackathon mode,
+  the "never commit to `main`" rule and the protected-areas rule don't apply; all other rules
+  do. The exception is on only when a local, git-ignored `CLAUDE.local.md` explicitly says the
+  user is Raphael; never assume it otherwise. The rest of this section applies to everyone else.
+- **Small task = any issue opened by Raphael**, whatever it contains (new pages included).
+  Don't ask again whether it's too big. Do NOT brainstorm and do NOT write spec or plan files.
+  Read the issue, make the change, verify it.
+- **Skills for a small task: only these two.**
+  - `systematic-debugging` for bugs. When it asks for a failing test: write one only if the
+    project already has tests; otherwise reproduce the bug by running the app.
+  - `verification-before-completion` before saying it's done or opening a PR: run the app and
+    check the change actually works.
+  - Use no other skill unless Raphael asks. In particular: never a worktree (work on a normal
+    branch in this folder), no subagents, no review skills. To finish, follow step 4 of
+    [CONTRIBUTING.md](CONTRIBUTING.md).
+- **Bigger than one issue** = work no issue covers, or that goes beyond what the issue
+  describes (a new data model, changes across several areas). Stop and tell the user to check
+  with Raphael first.
 
 ## UI rules
 
-- Reuse existing components from `<components folder, filled once the base exists>`.
-- Colors, fonts and spacing come from `<theme file, filled once the base exists>`. Never
+- Reuse existing components from `components/ui/`. Need a shadcn/ui component that isn't
+  there yet? Ask Raphael (adding one changes `package.json`).
+- Colors, fonts and spacing come from the theme variables in `app/globals.css`. Never
   hardcode new colors.
 - Never add a new UI library, CSS framework or icon set.
 - If a component you need doesn't exist, build it from the existing ones and match their look.
@@ -58,11 +80,18 @@ the skills**, including the `using-superpowers` instruction to invoke a skill be
 Don't change these without Raphael's explicit OK. If the task needs it, stop and say so.
 
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.agents/`, `.github/`
-- <!-- Filled once the base exists: config, data model, routing, theme file... -->
+- `package.json` and the lockfile
+- `lib/server/`, `app/layout.tsx`, `app/globals.css`
+- Config: `next.config.*`, `tsconfig.json`, `.env.example`
+- <!-- Extended once the base exists. -->
 
 ## Git workflow
 
 - Never commit or push to `main`. Every change goes through a pull request.
+- Never approve, merge or close a PR: only Raphael does.
+- Start every new branch from the latest `main`: commit or stash your work, then
+  `git checkout main`, `git pull`, `git checkout -b <branch>`.
+  Never branch from another feature branch.
 - One issue = one branch = one PR. Branch name: `<type>/<issue-number>-<short-name>`,
   e.g. `fix/12-login-button`, `feat/15-search-bar`.
 - Small commits with clear messages: `fix: align login button (#12)`.
