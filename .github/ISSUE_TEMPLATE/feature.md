@@ -12,6 +12,10 @@ labels: feature
 
 - [ ] <!-- How we check it works -->
 
+## Files to look at
+
+<!-- Paths the agent should start from. Saves quota. -->
+
 ## Notes
 
-<!-- Files to look at, design reference, anything that helps. -->
+<!-- Design reference, anything that helps. -->

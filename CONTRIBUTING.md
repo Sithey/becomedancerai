@@ -47,9 +47,9 @@ reviewer automatically.
 ### 5. While you wait, and after review
 
 - **Waiting for review:** don't wait. Start the next issue from `main`:
-  ask your agent "Commit my work, go back to main, pull, and start issue #<n>".
-- **Changes requested:** ask your agent to switch back to that branch, fix, commit, push.
-  The PR updates itself.
+  ask your agent "Commit my work, go back to main, pull, run npm install, and start issue #<n>".
+- **Changes requested:** ask your agent "Switch to my branch for PR #<n> and apply Raphael's
+  review comments", then commit and push. The PR updates itself.
 
 ## The same thing by hand
 
@@ -70,6 +70,17 @@ git push -u origin fix/12-login-button
 - **Merge conflict:** ask your agent: "Help me resolve the merge conflict. Explain each
   conflict to me, keep both changes where possible, then run the app." Not sure? Call Raphael.
 - **Anything with `--force` or `reset --hard`:** don't. Ask Raphael first.
+
+## Save your AI quota
+
+The Gemini student quota runs out if you're careless. Three habits:
+
+1. **One new conversation per issue.** A long conversation resends its whole history with
+   every message: it's by far what burns the most quota.
+2. **Be precise.** Paste the issue and the files to look at (they're in the issue). A vague
+   request makes the agent read the whole repo.
+3. **Fast model first.** If your tool lets you pick a model, use the fast one for small tasks
+   and switch to the most capable one only when you're stuck.
 
 ## Good prompts for your agent
 

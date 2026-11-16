@@ -23,6 +23,16 @@ shadcn/ui.
   - `lib/server/`: business logic, database, AI calls (server only)
   - `components/ui/`: shared UI components (shadcn/ui)
 
+## Database
+
+Postgres through Prisma 7 (`prisma/schema.prisma`). The dev database is shared by the whole team.
+
+- Use the Prisma client only through `lib/server/db.ts`. Never create another `PrismaClient`.
+- Never run `prisma migrate`, `prisma db push`, `prisma migrate reset` or anything that changes
+  the schema or deletes data. Only Raphael changes the schema.
+- After pulling `main`, run `npm install` (it regenerates the Prisma client).
+- `DATABASE_URL` lives in `.env.local`, never committed.
+
 ## How to run
 
 <!-- Filled in once the base exists: install, dev, build commands. -->
@@ -30,8 +40,7 @@ _To be defined once the base project exists._
 
 ## Working with the team
 
-The people you work with are students, often new to programming and git. Communication
-in the team is in English.
+The people you work with are students, often new to programming and git.
 
 - Before acting, say in one or two plain sentences what you're going to do.
 - After acting, explain what changed and how to check it.
@@ -54,11 +63,13 @@ the skills**, including the `using-superpowers` instruction to invoke a skill be
 - **Small task = any issue opened by Raphael**, whatever it contains (new pages included).
   Don't ask again whether it's too big. Do NOT brainstorm and do NOT write spec or plan files.
   Read the issue, make the change, verify it.
-- **Skills for a small task: only these two.**
+- **Skills for a small task: only these three.**
   - `systematic-debugging` for bugs. When it asks for a failing test: write one only if the
     project already has tests; otherwise reproduce the bug by running the app.
   - `verification-before-completion` before saying it's done or opening a PR: run the app and
     check the change actually works.
+  - `receiving-code-review` when Raphael requests changes on a PR. Raphael's review comments
+    apply: if one seems wrong, explain why to the user and ask on the PR, don't skip it.
   - Use no other skill unless Raphael asks. In particular: never a worktree (work on a normal
     branch in this folder), no subagents, no review skills. To finish, follow step 4 of
     [CONTRIBUTING.md](CONTRIBUTING.md).
@@ -80,7 +91,7 @@ the skills**, including the `using-superpowers` instruction to invoke a skill be
 Don't change these without Raphael's explicit OK. If the task needs it, stop and say so.
 
 - `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.agents/`, `.github/`
-- `package.json` and the lockfile
+- `package.json` and the lockfile, `prisma/`
 - `lib/server/`, `app/layout.tsx`, `app/globals.css`
 - Config: `next.config.*`, `tsconfig.json`, `.env.example`
 - <!-- Extended once the base exists. -->
@@ -99,8 +110,7 @@ Don't change these without Raphael's explicit OK. If the task needs it, stop and
   app again.
 - Never run `git push --force`, `git reset --hard`, or delete branches unless the user
   explicitly asks and understands what it does.
-- Fill in the PR template (`.github/pull_request_template.md`), including a screenshot for
-  anything visible.
+- Fill in the PR template, with a screenshot for anything visible.
 
 ## Progress trace
 
