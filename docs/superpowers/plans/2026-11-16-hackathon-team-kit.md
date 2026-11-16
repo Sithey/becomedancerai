@@ -32,12 +32,12 @@
 ### Task 1: Repo skeleton + vendored Superpowers
 
 **Files:**
-- Create: `.agents/skills/<14 skill folders>/`, `.agents/skills/LICENSE`, `.agents/skills/README.md` (source + version + how to update), `.gitignore`, `.gitattributes`
+- Create: `.agents/skills/<15 skill folders>/`, `.agents/skills/LICENSE`, `.agents/skills/README.md` (source + version + how to update), `.gitignore`, `.gitattributes`
 
 - [ ] **Step 1:** `git init -b main` in `/Users/raphael/Documents/Development/hackaton/hackaton-19-11-26` (one folder per hackathon; the parent `hackaton/` stays a plain folder).
-- [ ] **Step 2:** Copy the 14 skill folders and `LICENSE` from the pinned path.
+- [ ] **Step 2:** Copy the 15 skill folders and `LICENSE` from the pinned path.
 - [ ] **Step 3:** `.gitattributes`: `* text=auto eol=lf`. `.gitignore`: `.DS_Store`, `node_modules/`, `.env*`, `!.env.example`.
-- [ ] **Step 4: Verify** — `ls .agents/skills | grep -vc -E 'LICENSE|README'` → `14`; `grep -L '^name:' .agents/skills/*/SKILL.md` → empty.
+- [ ] **Step 4: Verify** — `ls .agents/skills | grep -vc -E 'LICENSE|README'` → `15`; `grep -L '^name:' .agents/skills/*/SKILL.md` → empty.
 - [ ] **Step 5: Commit** `chore: vendor superpowers 7.0.2 skills`.
 
 ### Task 2: Agent rules + contribution workflow
