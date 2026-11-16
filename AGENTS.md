@@ -77,6 +77,16 @@ the skills**, including the `using-superpowers` instruction to invoke a skill be
   describes (a new data model, changes across several areas). Stop and tell the user to check
   with Raphael first.
 
+## Code style
+
+- **Reuse before writing.** Before creating a helper, hook, component or API route, search the
+  repo for one that already does it. Then prefer what the stack already gives you (Next.js,
+  shadcn/ui, Prisma, Tailwind). Only if neither fits, write your own; a new library needs
+  Raphael's OK.
+- **Comments only for the why**: a non-obvious choice, a pitfall, a workaround. No comments
+  that repeat the code, no banners, no change notes ("added…", "fixed…"), no commented-out code.
+- Leave no `console.log` or debug code behind.
+
 ## UI rules
 
 - Reuse existing components from `components/ui/`. Need a shadcn/ui component that isn't
