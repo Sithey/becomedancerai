@@ -10,3 +10,4 @@ export const MAX_ANGLE_DEG = 120;
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
 export const MAX_DURATION_MS = 90_000;
 export const MIN_DETECTION_RATE = 0.5;
+export const MAX_TRENDS = 50;

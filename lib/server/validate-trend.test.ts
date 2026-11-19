@@ -38,6 +38,7 @@ test.each([
   [{ title: "  " }, "Title is required"],
   [{ title: "x".repeat(81) }, "Title must be 80 characters or fewer"],
   [{ video: new File([new Uint8Array(10)], "a.mov", { type: "video/quicktime" }) }, "Video must be an mp4"],
+  [{ video: mp4(0) }, "Video must be an mp4"],
   [{ video: mp4(50 * 1024 * 1024 + 1) }, "Video must be under 50 MB"],
   [{ durationMs: "90001" }, "Videos must be 90 seconds or shorter"],
   [{ width: "0" }, "Video details are invalid"],

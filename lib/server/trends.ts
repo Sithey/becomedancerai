@@ -27,6 +27,10 @@ export async function listTrends(): Promise<TrendSummary[]> {
     }));
 }
 
+export async function countTrends(): Promise<number> {
+  return db.trend.count();
+}
+
 export async function getTrend(id: string): Promise<TrendData | null> {
   const row = await db.trend.findUnique({ where: { id } });
   if (!row) return null;

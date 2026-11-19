@@ -47,7 +47,9 @@ export function parseNewTrend(form: FormData): Result {
   if (!title) return fail("Title is required");
   if (title.length > 80) return fail("Title must be 80 characters or fewer");
 
-  if (!(video instanceof File) || video.type !== "video/mp4") return fail("Video must be an mp4");
+  if (!(video instanceof File) || video.type !== "video/mp4" || video.size === 0) {
+    return fail("Video must be an mp4");
+  }
   if (video.size > MAX_UPLOAD_BYTES) return fail("Video must be under 50 MB");
 
   const width = positiveInt(form.get("width"));
