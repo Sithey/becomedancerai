@@ -6,7 +6,10 @@ Read this file fully before doing anything.
 ## About this project
 
 <!-- Filled in on hackathon day: what we're building, for whom, the one demo flow that must work. -->
-_To be defined on hackathon day._
+Dance tutor: someone sees a dance trend on TikTok and wants to do it. The app teaches it like a
+patient dance teacher. The dance is split into short moves, the learner practices one move at a
+time (slow motion, loop, mirror), then the webcam watches them, shows which body part is wrong
+and tells them how to fix it.
 
 ## Stack
 
@@ -22,6 +25,8 @@ shadcn/ui.
   - `app/api/`: HTTP endpoints (route handlers)
   - `lib/server/`: business logic, database, external APIs (server only)
   - `components/ui/`: shared UI components (shadcn/ui)
+  - `components/dance/`: app components
+  - `lib/pose/`: browser pose code and pure scoring math (not server)
 
 ## Database
 
@@ -36,7 +41,13 @@ Postgres through Prisma 7 (`prisma/schema.prisma`). The dev database is shared b
 ## How to run
 
 <!-- Filled in once the base exists: install, dev, build commands. -->
-_To be defined once the base project exists._
+1. `npm install` (also regenerates the Prisma client and copies the MediaPipe files).
+2. Create `.env.local` with `DATABASE_URL` (Raphael sends it) and, optionally, `UPLOAD_DIR`
+   (default `./uploads`).
+3. `npm run dev`, then open http://localhost:3000.
+4. `npm test` runs the tests, `npm run build` checks the production build.
+
+The webcam only works on `localhost` or over HTTPS.
 
 ## Working with the team
 
@@ -104,7 +115,8 @@ Don't change these without Raphael's explicit OK. If the task needs it, stop and
 - `package.json` and the lockfile, `prisma/`
 - `lib/server/`, `app/layout.tsx`, `app/globals.css`
 - Config: `next.config.*`, `tsconfig.json`, `.env.example`
-- <!-- Extended once the base exists. -->
+- `lib/pose/` (except `lib/pose/tips.ts`), `components/dance/practice-session.tsx`, `app/api/`,
+  `Dockerfile`, `scripts/`, `vitest.config.mts`, `public/mediapipe/`
 
 ## Git workflow
 

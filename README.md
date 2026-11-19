@@ -1,7 +1,6 @@
 # hackaton-19-11-26
 
-<!-- Project name, one-line pitch and demo link: filled in on hackathon day. -->
-_Hackathon project, Thursday Nov 19, 2026. Description coming on the day._
+Learn TikTok dance trends with a webcam tutor that scores every move.
 
 ## Team kit
 

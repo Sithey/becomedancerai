@@ -1,0 +1,10 @@
+node_modules
+.next
+.env*
+uploads
+*.mp4
+.git
+.superpowers
+generated
+public/mediapipe/wasm
+CLAUDE.local.md
