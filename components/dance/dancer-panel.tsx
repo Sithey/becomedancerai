@@ -39,7 +39,10 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
     if (!video) return;
     video.play().then(
       () => setNeedsPlay(false),
-      () => setNeedsPlay(true),
+      (error: unknown) => {
+        // A pause or seek interrupting play() rejects with AbortError: only an autoplay block needs the button.
+        if (error instanceof DOMException && error.name === "NotAllowedError") setNeedsPlay(true);
+      },
     );
   }, [videoRef]);
 
@@ -49,13 +52,14 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
     video.playbackRate = speed;
   }, [speed, videoRef]);
 
+  const { startMs, endMs } = range;
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     finishedRef.current = false;
-    video.currentTime = range.startMs / 1000;
+    video.currentTime = startMs / 1000;
     start();
-  }, [range, start, videoRef]);
+  }, [startMs, endMs, start, videoRef]);
 
   useEffect(() => {
     const video = videoRef.current;
