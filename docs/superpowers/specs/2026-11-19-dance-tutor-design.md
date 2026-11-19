@@ -1,6 +1,6 @@
 # Dance tutor: design
 
-Date: 2026-11-19. Status: draft for Raphael's approval. Working name "Dance tutor" (final name
+Date: 2026-11-19. Status: approved by Raphael. Working name "Dance tutor" (final name
 left to the team).
 
 ## Intent
@@ -43,7 +43,8 @@ first users.
 - An impressive tech demo that nobody could actually learn the dance from.
 - Feedback that lags or flickers, or scoring that feels random (failing a correct move,
   praising a wrong one). The learner stops trusting it.
-- A demo that depends on venue wifi or an external service at the moment it runs.
+- Live feedback that depends on the network. Webcam checking runs entirely in the browser;
+  only loading a trend touches the server.
 
 ## Constraints
 
@@ -59,7 +60,8 @@ first users.
   (yt-dlp) break often. So import is by uploading an mp4 the user already saved.
 - The webcam (`getUserMedia`) only works in a secure context: `localhost` or HTTPS. The
   deployed app must be served over HTTPS.
-- TikTok videos belong to their creators: demo use only, no public redistribution.
+- TikTok videos belong to their creators: demo use only. Never commit mp4s to the repo; demo
+  trends are uploaded through the app. Take the site down after the event.
 
 ## Approaches
 
@@ -194,6 +196,9 @@ One table, owned by Raphael:
    they fix it, the move passes (25 s).
 5. Full run → final score (25 s).
 
+**Where it runs:** the deployed HTTPS site over the venue wifi, a phone hotspot as backup, and
+the backup video recorded before the 06:00 freeze (see `docs/team/DAY-PLAN.md`).
+
 **Demo content** (content/research students): 2–3 trends chosen to track well: one dancer,
 full body visible, facing the camera, no jump cuts or zooms, good light, not too fast. Added
 before the demo. Rehearse at the venue's distance and lighting.
@@ -242,6 +247,19 @@ directional tips, then cut the full run (practice alone still demos the tutor).
 - No accounts or saved progress; desktop only.
 - Model and WASM self-hosted in `public/`.
 - Videos on the server's disk, served by a Range-aware route; pose data as JSON in Postgres.
+- Demo from the deployed site (hotspot + backup video as fallbacks), no offline setup.
+- No password on the site; no mp4s in the repo; site taken down after the event.
+
+## Open: the deploy target (Raphael to fill in)
+
+Not known yet: whether it's the same server as Postgres, the domain and TLS, the reverse proxy,
+Docker or bare Node. Whatever it is, it must provide:
+
+- a folder for uploaded videos that survives a redeploy (Docker volume or a path outside the
+  standalone build);
+- an upload size limit of at least 50 MB at the proxy (nginx defaults to 1 MB);
+- Range requests on video files: either the proxy serves the upload folder directly, or the
+  app's video route implements them.
 
 ## Left to the builder
 
