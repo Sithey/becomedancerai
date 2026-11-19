@@ -14,9 +14,19 @@ type Props = {
   videoRef: RefObject<HTMLVideoElement | null>;
   onLoop?: () => void;
   loop?: boolean;
+  autoStart?: boolean;
 };
 
-export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, loop }: Props) {
+export function DancerPanel({
+  trend,
+  range,
+  speed,
+  mirrored,
+  videoRef,
+  onLoop,
+  loop,
+  autoStart = true,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [needsPlay, setNeedsPlay] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
@@ -59,8 +69,8 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
     if (!video) return;
     finishedRef.current = false;
     video.currentTime = startMs / 1000;
-    start();
-  }, [startMs, endMs, start, videoRef]);
+    if (autoStart) start();
+  }, [startMs, endMs, autoStart, start, videoRef]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -76,8 +86,9 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
       if (loopRef.current === false) {
         video.pause();
       } else {
-        video.currentTime = rangeRef.current.startMs / 1000;
+        // play() on an ended video seeks to 0: call it first so our seek lands last.
         start();
+        video.currentTime = rangeRef.current.startMs / 1000;
       }
       onLoopRef.current?.();
     };

@@ -40,6 +40,8 @@ export function PracticeSession({ trend, mode }: Props) {
   const dancerRef = useRef<HTMLVideoElement>(null);
   const learnerCanvasRef = useRef<HTMLCanvasElement>(null);
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "error">("loading");
+  // The dancer waits for the camera and the model, or the start of move 1 isn't scored.
+  const [started, setStarted] = useState(false);
 
   const [moveIndex, setMoveIndex] = useState(0);
   const [passed, setPassed] = useState<number[]>([]);
@@ -180,6 +182,7 @@ export function PracticeSession({ trend, mode }: Props) {
       : modelStatus === "error"
         ? "Couldn't load the pose model. Reload the page to try again."
         : null;
+  const ready = webcamStatus === "ready" && modelStatus === "ready";
   const shownMove = isFull ? liveMove : moveIndex;
   const mirrorToggle = (
     <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
@@ -200,6 +203,7 @@ export function PracticeSession({ trend, mode }: Props) {
             videoRef={dancerRef}
             onLoop={handleLoop}
             loop={!isFull}
+            autoStart={started}
           />
         </div>
         <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
@@ -211,6 +215,14 @@ export function PracticeSession({ trend, mode }: Props) {
           />
         </div>
       </div>
+
+      {!started && (
+        <div className="flex justify-center">
+          <Button size="lg" disabled={!ready} onClick={() => setStarted(true)}>
+            {ready ? "Start" : "Getting ready…"}
+          </Button>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 items-center gap-4">
         <span className="text-sm text-muted-foreground">{`Move ${shownMove + 1} of ${trend.moves.length}`}</span>
