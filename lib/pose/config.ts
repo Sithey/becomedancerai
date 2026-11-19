@@ -1,0 +1,12 @@
+export const PASS_SCORE = 70;
+export const WINDOW_BEFORE_MS = 400;
+export const WINDOW_AFTER_MS = 100;
+export const SMOOTHING_MS = 500;
+export const MOVE_MIN_MS = 2000;
+export const MOVE_MAX_MS = 4000;
+export const MIN_VISIBILITY = 0.5;
+export const SAMPLE_MS = 50;
+export const MAX_ANGLE_DEG = 120;
+export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024;
+export const MAX_DURATION_MS = 90_000;
+export const MIN_DETECTION_RATE = 0.5;
