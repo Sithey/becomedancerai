@@ -250,16 +250,16 @@ directional tips, then cut the full run (practice alone still demos the tutor).
 - Demo from the deployed site (hotspot + backup video as fallbacks), no offline setup.
 - No password on the site; no mp4s in the repo; site taken down after the event.
 
-## Open: the deploy target (Raphael to fill in)
+## Deploy
 
-Not known yet: whether it's the same server as Postgres, the domain and TLS, the reverse proxy,
-Docker or bare Node. Whatever it is, it must provide:
+Raphael deploys it himself on his own hosting with **Coolify** (Docker build, HTTPS from
+Coolify's proxy). The repo will be **public**. That means:
 
-- a folder for uploaded videos that survives a redeploy (Docker volume or a path outside the
-  standalone build);
-- an upload size limit of at least 50 MB at the proxy (nginx defaults to 1 MB);
-- Range requests on video files: either the proxy serves the upload folder directly, or the
-  app's video route implements them.
+- a `Dockerfile` (Next.js standalone) in the repo; Coolify builds from it;
+- a Coolify persistent storage volume for uploaded videos, so a redeploy doesn't wipe them;
+- videos served by the app's Range-aware route (Coolify's proxy only forwards);
+- check after the first deploy that a 30 MB upload goes through the proxy;
+- nothing secret or copyrighted in the repo: no `.env`, no mp4s.
 
 ## Left to the builder
 
