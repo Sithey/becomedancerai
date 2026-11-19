@@ -1,0 +1,48 @@
+import { useEffect, useRef, useState, type RefObject } from "react";
+
+export type WebcamStatus = "starting" | "ready" | "denied" | "unavailable";
+
+export function webcamErrorStatus(err: unknown): "denied" | "unavailable" {
+  const name = (err as { name?: unknown } | null)?.name;
+  return name === "NotAllowedError" || name === "SecurityError" ? "denied" : "unavailable";
+}
+
+export function useWebcam(): { videoRef: RefObject<HTMLVideoElement | null>; status: WebcamStatus } {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [status, setStatus] = useState<WebcamStatus>("starting");
+
+  useEffect(() => {
+    let cancelled = false;
+    let stream: MediaStream | null = null;
+
+    async function start() {
+      // mediaDevices is undefined outside a secure context (plain http on a LAN address).
+      if (!navigator.mediaDevices?.getUserMedia) throw new Error("getUserMedia is not available");
+      const media = await navigator.mediaDevices.getUserMedia({
+        video: { width: 1280, height: 720, facingMode: "user" },
+        audio: false,
+      });
+      if (cancelled) {
+        media.getTracks().forEach((track) => track.stop());
+        return;
+      }
+      stream = media;
+      const video = videoRef.current;
+      if (!video) return;
+      video.srcObject = media;
+      await video.play();
+      if (!cancelled) setStatus("ready");
+    }
+
+    start().catch((err: unknown) => {
+      if (!cancelled) setStatus(webcamErrorStatus(err));
+    });
+
+    return () => {
+      cancelled = true;
+      stream?.getTracks().forEach((track) => track.stop());
+    };
+  }, []);
+
+  return { videoRef, status };
+}
