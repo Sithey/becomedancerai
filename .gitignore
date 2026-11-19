@@ -29,3 +29,5 @@ next-env.d.ts
 public/mediapipe/wasm/
 uploads/
 *.mp4
+
+/generated/prisma

@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Trend {
+  id         String   @id @default(cuid())
+  title      String
+  videoFile  String
+  width      Int
+  height     Int
+  durationMs Int
+  sampleMs   Int
+  poses      Json
+  moves      Json
+  createdAt  DateTime @default(now())
+}
