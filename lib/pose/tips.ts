@@ -1,5 +1,4 @@
-import { PASS_SCORE } from "./config";
-import { LIMBS } from "./landmarks";
+import { failingLimbs } from "./scoring";
 import type { LimbName, LimbScores } from "./types";
 
 const TIPS: Record<LimbName, string> = {
@@ -12,10 +11,6 @@ const TIPS: Record<LimbName, string> = {
   rightThigh: "Watch your right leg",
   rightShin: "Watch your right leg",
 };
-
-export function failingLimbs(limbs: LimbScores): LimbName[] {
-  return (Object.keys(LIMBS) as LimbName[]).filter((l) => limbs[l] !== undefined && limbs[l]! < PASS_SCORE);
-}
 
 export function tipFor(limbs: LimbScores): string | null {
   let worst: LimbName | null = null;

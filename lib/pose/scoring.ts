@@ -65,3 +65,7 @@ export function averageScore(scores: (number | null)[]): number | null {
 export function isPassed(avg: number | null): boolean {
   return avg !== null && avg >= PASS_SCORE;
 }
+
+export function failingLimbs(limbs: LimbScores): LimbName[] {
+  return (Object.keys(LIMBS) as LimbName[]).filter((l) => limbs[l] !== undefined && limbs[l]! < PASS_SCORE);
+}
