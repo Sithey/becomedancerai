@@ -1,5 +1,7 @@
-import type { Move, PoseFrame, TrendData, TrendSummary } from "@/lib/pose/types";
+import { randomBytes } from "node:crypto";
+import type { Move, NewTrend, PoseFrame, TrendData, TrendSummary } from "@/lib/pose/types";
 import { db } from "./db";
+import { deleteVideo, saveVideo } from "./videos";
 
 function videoUrl(videoFile: string) {
   return `/api/videos/${videoFile}`;
@@ -34,4 +36,29 @@ export async function getTrend(id: string): Promise<TrendData | null> {
     poses: row.poses as PoseFrame[],
     moves: row.moves as Move[],
   };
+}
+
+export async function createTrend(input: NewTrend, video: File): Promise<{ id: string }> {
+  const id = randomBytes(12).toString("hex");
+  const videoFile = `${id}.mp4`;
+  await saveVideo(videoFile, video);
+  try {
+    await db.trend.create({
+      data: {
+        id,
+        videoFile,
+        title: input.title,
+        width: input.width,
+        height: input.height,
+        durationMs: input.durationMs,
+        sampleMs: input.sampleMs,
+        poses: input.poses,
+        moves: input.moves,
+      },
+    });
+  } catch (error) {
+    await deleteVideo(videoFile);
+    throw error;
+  }
+  return { id };
 }
