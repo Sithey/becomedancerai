@@ -19,6 +19,7 @@ type Props = {
 export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, loop }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [needsPlay, setNeedsPlay] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const onLoopRef = useRef(onLoop);
   const rangeRef = useRef(range);
   const loopRef = useRef(loop);
@@ -85,9 +86,13 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
       video.playbackRate = speedRef.current;
       video.currentTime = rangeRef.current.startMs / 1000;
     };
+    const onError = () => setUnavailable(true);
     video.addEventListener("ended", handleEnd);
     video.addEventListener("loadedmetadata", onLoadedMetadata);
+    video.addEventListener("error", onError);
     if (video.readyState >= 1) onLoadedMetadata();
+    // The 404 can arrive before hydration, when no listener is attached yet.
+    if (video.error) onError();
 
     let raf = requestAnimationFrame(function frame() {
       const ms = video.currentTime * 1000;
@@ -102,6 +107,7 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
       cancelAnimationFrame(raf);
       video.removeEventListener("ended", handleEnd);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
+      video.removeEventListener("error", onError);
     };
   }, [trend, start, videoRef]);
 
@@ -122,11 +128,16 @@ export function DancerPanel({ trend, range, speed, mirrored, videoRef, onLoop, l
         height={trend.height}
         className={cn("absolute inset-0 size-full object-cover", flip)}
       />
-      {needsPlay && (
+      {needsPlay && !unavailable && (
         <div className="absolute inset-0 flex items-center justify-center">
           <Button size="lg" onClick={start}>
             Play
           </Button>
+        </div>
+      )}
+      {unavailable && (
+        <div className="absolute inset-0 flex items-center justify-center p-6">
+          <p className="text-center text-sm text-foreground">{"This video isn't available here."}</p>
         </div>
       )}
     </div>

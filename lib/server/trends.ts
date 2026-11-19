@@ -1,7 +1,8 @@
 import { randomBytes } from "node:crypto";
+import { existsSync } from "node:fs";
 import type { Move, NewTrend, PoseFrame, TrendData, TrendSummary } from "@/lib/pose/types";
 import { db } from "./db";
-import { deleteVideo, saveVideo } from "./videos";
+import { deleteVideo, saveVideo, videoFilePath } from "./videos";
 
 function videoUrl(videoFile: string) {
   return `/api/videos/${videoFile}`;
@@ -13,13 +14,17 @@ export async function listTrends(): Promise<TrendSummary[]> {
     select: { id: true, title: true, videoFile: true, durationMs: true, moves: true },
     orderBy: { createdAt: "desc" },
   });
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    videoUrl: videoUrl(row.videoFile),
-    durationMs: row.durationMs,
-    moveCount: (row.moves as Move[]).length,
-  }));
+  // Videos stay on the machine that uploaded them; with the shared dev database, rows from
+  // teammates' laptops have no file here.
+  return rows
+    .filter((row) => existsSync(videoFilePath(row.videoFile)))
+    .map((row) => ({
+      id: row.id,
+      title: row.title,
+      videoUrl: videoUrl(row.videoFile),
+      durationMs: row.durationMs,
+      moveCount: (row.moves as Move[]).length,
+    }));
 }
 
 export async function getTrend(id: string): Promise<TrendData | null> {

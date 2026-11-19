@@ -5,7 +5,6 @@ Read this file fully before doing anything.
 
 ## About this project
 
-<!-- Filled in on hackathon day: what we're building, for whom, the one demo flow that must work. -->
 Dance tutor: someone sees a dance trend on TikTok and wants to do it. The app teaches it like a
 patient dance teacher. The dance is split into short moves, the learner practices one move at a
 time (slow motion, loop, mirror), then the webcam watches them, shows which body part is wrong
@@ -40,14 +39,15 @@ Postgres through Prisma 7 (`prisma/schema.prisma`). The dev database is shared b
 
 ## How to run
 
-<!-- Filled in once the base exists: install, dev, build commands. -->
 1. `npm install` (also regenerates the Prisma client and copies the MediaPipe files).
 2. Create `.env.local` with `DATABASE_URL` (Raphael sends it) and, optionally, `UPLOAD_DIR`
-   (default `./uploads`).
+   (where uploaded videos are stored, default `./uploads`).
 3. `npm run dev`, then open http://localhost:3000.
 4. `npm test` runs the tests, `npm run build` checks the production build.
 
 The webcam only works on `localhost` or over HTTPS.
+Videos stay on the computer that uploaded them: with the shared dev database, trends added by
+teammates are hidden from your Library.
 
 ## Working with the team
 
