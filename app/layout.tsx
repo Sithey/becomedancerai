@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Inter, Space_Grotesk } from "next/font/google";
-import { SiteHeader } from "@/components/dance/site-header";
+import { Suspense } from "react";
+import { HeaderBar, SiteHeader } from "@/components/dance/site-header";
 import "./globals.css";
 
 const inter = Inter({
@@ -30,7 +31,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`dark ${inter.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        <SiteHeader />
+        {/* usePathname() is request data: under Cache Components it has to stream inside Suspense. */}
+        <Suspense fallback={<HeaderBar pathname={null} />}>
+          <SiteHeader />
+        </Suspense>
         {children}
       </body>
     </html>

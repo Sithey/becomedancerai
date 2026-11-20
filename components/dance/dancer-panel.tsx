@@ -137,7 +137,7 @@ export function DancerPanel({
   const flip = mirrored && "-scale-x-100";
 
   return (
-    <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-muted">
+    <div className="relative aspect-[9/16] overflow-hidden rounded-3xl border border-border bg-card">
       <video
         ref={videoRef}
         src={trend.videoUrl}

@@ -11,10 +11,13 @@ const NAV = [
   { href: "/viral", label: "Go viral" },
 ];
 
-export function SiteHeader() {
-  const pathname = usePathname();
-  const isActive = (href: string) => (href === "/" ? pathname === "/" || pathname.startsWith("/trends/") : pathname.startsWith(href));
+function isActive(href: string, pathname: string | null) {
+  if (pathname === null) return false;
+  return href === "/" ? pathname === "/" || pathname.startsWith("/trends/") : pathname.startsWith(href);
+}
 
+// Rendered as-is while prerendering (no active tab), then SiteHeader fills in the active tab.
+export function HeaderBar({ pathname }: { pathname: string | null }) {
   return (
     <header className="border-b border-border">
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-4 px-8 py-4">
@@ -27,10 +30,10 @@ export function SiteHeader() {
             <Link
               key={item.href}
               href={item.href}
-              aria-current={isActive(item.href) ? "page" : undefined}
+              aria-current={isActive(item.href, pathname) ? "page" : undefined}
               className={cn(
                 "rounded-full px-3.5 py-2.5 text-sm font-medium transition-colors",
-                isActive(item.href) ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
+                isActive(item.href, pathname) ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
               {item.label}
@@ -43,4 +46,8 @@ export function SiteHeader() {
       </div>
     </header>
   );
+}
+
+export function SiteHeader() {
+  return <HeaderBar pathname={usePathname()} />;
 }
