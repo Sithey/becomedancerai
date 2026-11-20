@@ -31,3 +31,6 @@ uploads/
 *.mp4
 
 /generated/prisma
+
+# Debug attempts (dev only, may contain body data)
+debug-attempts/
