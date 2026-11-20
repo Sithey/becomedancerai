@@ -67,10 +67,10 @@ export function CountIn({ onDone }: Props) {
   }, [onDone]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-[2px]">
+    <div role="status" aria-live="assertive" aria-atomic="true" className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-[2px]">
       <span
         key={count}
-        className="animate-in zoom-in-75 text-8xl font-black text-primary drop-shadow-lg select-none duration-200 sm:text-9xl"
+        className="motion-safe:animate-in motion-safe:zoom-in-75 text-8xl font-black text-primary drop-shadow-lg select-none duration-200 sm:text-9xl"
       >
         {count}
       </span>

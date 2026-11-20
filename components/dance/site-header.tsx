@@ -13,7 +13,7 @@ const NAV = [
 
 function isActive(href: string, pathname: string | null) {
   if (pathname === null) return false;
-  return href === "/" ? pathname === "/" || pathname.startsWith("/trends/") : pathname.startsWith(href);
+  return href === "/" ? pathname === "/" || (pathname.startsWith("/trends/") && pathname !== "/trends/new") : pathname.startsWith(href);
 }
 
 // Rendered as-is while prerendering (no active tab), then SiteHeader fills in the active tab.
