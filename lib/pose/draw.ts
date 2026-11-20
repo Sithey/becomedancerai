@@ -1,15 +1,20 @@
 import { PoseLandmarker } from "@mediapipe/tasks-vision";
 import { MIN_VISIBILITY } from "./config";
-import { LIMBS } from "./landmarks";
+import { LIMBS, type Endpoint } from "./landmarks";
 import type { LimbName, Pose } from "./types";
 
 const FIRST_BODY_INDEX = 11;
 
+// Only limbs between two real landmarks match a drawn connection; midpoint limbs (head, torso) have no line.
 const limbByPair = new Map<string, LimbName>(
-  (Object.entries(LIMBS) as [LimbName, [number, number]][]).flatMap(([limb, [a, b]]) => [
-    [`${a}-${b}`, limb],
-    [`${b}-${a}`, limb],
-  ]),
+  (Object.entries(LIMBS) as [LimbName, [Endpoint, Endpoint]][]).flatMap(([limb, [a, b]]) =>
+    typeof a === "number" && typeof b === "number"
+      ? [
+          [`${a}-${b}`, limb],
+          [`${b}-${a}`, limb],
+        ]
+      : [],
+  ),
 );
 
 export function themeColor(name: "primary" | "destructive"): string {

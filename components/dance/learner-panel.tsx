@@ -37,7 +37,7 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice }: Props) {
         onResize={fitCanvas}
         className="absolute inset-0 size-full -scale-x-100 object-cover brightness-50"
       />
-      <canvas ref={canvasRef} className="absolute inset-0 size-full -scale-x-100 object-cover" />
+      <canvas ref={canvasRef} className="absolute inset-0 size-full -scale-x-100 object-cover text-green-400" />
       {message && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <p className="text-center text-sm text-foreground">{message}</p>

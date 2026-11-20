@@ -39,9 +39,14 @@ export default function Home() {
     <main className="mx-auto w-full flex min-h-screen max-w-4xl flex-col gap-6 bg-background p-8 text-foreground">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold">Dance Tutor</h1>
-        <Link href="/trends/new" className={buttonVariants()}>
-          Add a trend
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link href="/viral" className={buttonVariants({ variant: "outline" })}>
+            Go viral
+          </Link>
+          <Link href="/trends/new" className={buttonVariants()}>
+            Add a trend
+          </Link>
+        </div>
       </div>
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <TrendsGrid />

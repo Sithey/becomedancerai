@@ -3,21 +3,27 @@
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CoachingTip } from "@/components/dance/coaching-tip";
 import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
-import { RunResult } from "@/components/dance/run-result";
-import { DancerPanel } from "@/components/dance/dancer-panel";
+import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
+import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
+import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
+import { RunResult } from "@/components/dance/run-result";
+import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { drawSkeleton, themeColor } from "@/lib/pose/draw";
+import { comparePoses } from "@/lib/pose/compare";
+import { themeColor } from "@/lib/pose/draw";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
-import { averageScore, bestMatch, failingLimbs, isPassed, LimbSmoother } from "@/lib/pose/scoring";
-import { tipFor } from "@/lib/pose/tips";
-import type { Move, TrendData } from "@/lib/pose/types";
+import { averageScore, isPassed } from "@/lib/pose/scoring";
+import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
+import { correctionFor, limbDirections } from "@/lib/pose/tips";
+import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
 import { cn } from "cn";
 
@@ -25,7 +31,7 @@ const SPEEDS = [0.5, 0.75, 1];
 const UI_UPDATE_MS = 250;
 
 type Props = { trend: TrendData; mode: "moves" | "full" };
-type RunResult = { final: number | null; moves: (number | null)[] };
+type FullRunResult = { final: number | null; parts: (number | null)[] };
 
 function moveIndexAt(moves: Move[], tMs: number): number {
   const last = moves.length - 1;
@@ -35,7 +41,6 @@ function moveIndexAt(moves: Move[], tMs: number): number {
 }
 
 const roundScore = (avg: number | null) => (avg === null ? null : Math.round(avg));
-const scoreText = (score: number | null) => (score === null ? "–" : String(score));
 
 export function PracticeSession({ trend, mode }: Props) {
   const isFull = mode === "full";
@@ -47,25 +52,57 @@ export function PracticeSession({ trend, mode }: Props) {
   const [started, setStarted] = useState(false);
 
   const [moveIndex, setMoveIndex] = useState(0);
-  const [passed, setPassed] = useState<number[]>([]);
+  const [completedParts, setCompletedParts] = useState<Move[]>([]);
+  const [shorterParts, setShorterParts] = useState(false);
   const [done, setDone] = useState(false);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
   const [runKey, setRunKey] = useState(0);
-  const [result, setResult] = useState<RunResult | null>(null);
+  const [result, setResult] = useState<FullRunResult | null>(null);
+  const [resumeAtMs, setResumeAtMs] = useState(0);
   const [showConfetti, setShowConfetti] = useState(false);
 
-  const [tip, setTip] = useState<string | null>(null);
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
   const [countingIn, setCountingIn] = useState(false);
 
-  // Frame scores of the current loop (moves mode) or of the whole run (full mode).
+  // Practice tracks one loop. Full Run keeps each part's scores across retries.
   const scoresRef = useRef<number[]>([]);
   const bucketsRef = useRef<number[][]>([]);
+  const advanceTimer = useRef<number | null>(null);
 
-  const fullRange = useMemo(() => ({ startMs: 0, endMs: trend.durationMs }), [trend.durationMs]);
-  const range = isFull ? fullRange : trend.moves[moveIndex];
+  const cancelAdvance = useCallback(() => {
+    if (advanceTimer.current === null) return;
+    window.clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+  }, []);
+
+  useEffect(() => cancelAdvance, [cancelAdvance]);
+
+  const replayAttempt = useCallback((partIndex?: number) => {
+    scoresRef.current = [];
+    if (partIndex === undefined) {
+      bucketsRef.current = [];
+    } else {
+      bucketsRef.current[partIndex] = [];
+    }
+    setRunKey((k) => k + 1);
+  }, []);
+  const { coaching, pauseIfNeeded, replay, clearCoaching, getCoaching } = useCoachingReplay(replayAttempt);
+
+  const runParts = useMemo(
+    () => fullRunParts(trend.moves, trend.durationMs),
+    [trend.moves, trend.durationMs],
+  );
+  const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
+  const moves = isFull ? runParts : shorterParts ? shortMoves : trend.moves;
+  const passed = useMemo(() => moves.map((move) => isPartPassed(move, completedParts)), [moves, completedParts]);
+  const replayPart = coaching?.phase === "replay" && coaching.partIndex !== undefined
+    ? runParts[coaching.partIndex]
+    : null;
+  const range = isFull
+    ? replayPart ?? { startMs: resumeAtMs, endMs: trend.durationMs }
+    : moves[moveIndex];
 
   useEffect(() => {
     let cancelled = false;
@@ -73,10 +110,12 @@ export function PracticeSession({ trend, mode }: Props) {
     let raf = 0;
     let lastWebcamTime = -1;
     let lastUiUpdate = -Infinity;
-    const smoother = new LimbSmoother();
     const primary = themeColor("primary");
-    const destructive = themeColor("destructive");
+    const learnerCanvas = learnerCanvasRef.current;
+    const matchColor = learnerCanvas ? getComputedStyle(learnerCanvas).color : "";
     const dancerSize = { width: trend.width, height: trend.height };
+    const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
+    const history = new LearnerHistory();
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -90,32 +129,57 @@ export function PracticeSession({ trend, mode }: Props) {
       // The raw webcam frame goes to the model (mirroring is CSS only), so its left/right stay anatomical.
       const landmarks = landmarker.detectForVideo(webcam, now).landmarks[0];
       const learner = landmarks ? fromMediaPipe(landmarks) : null;
+      const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
 
       const dancer = dancerRef.current;
-      if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
+      let match: SegmentScore | null = null;
+      let reviewScores: LimbScores | undefined;
+      let partIndex = -1;
+      if (dancer && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
-        const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
-        const match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
-        if (match && match.score !== null) {
-          smoother.push(now, match.limbs);
-          scoresRef.current.push(match.score);
-          if (mode === "full") {
-            const i = moveIndexAt(trend.moves, tMs);
-            if (i !== -1) (bucketsRef.current[i] ??= []).push(match.score);
+        const currentCoaching = getCoaching();
+        if (isFull) partIndex = moveIndexAt(runParts, tMs);
+        if (!dancer.paused) {
+          // No learner pose this frame: skip scoring, so the last segment isn't credited again.
+          if (learner) {
+            history.push({ t: tMs, pose: learner });
+            match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
+          }
+          if (match) {
+            if (!isFull) {
+              scoresRef.current.push(match.score);
+            } else if (partIndex !== -1 && (
+              currentCoaching?.phase !== "replay" || currentCoaching.partIndex === partIndex
+            )) {
+              (bucketsRef.current[partIndex] ??= []).push(match.score);
+            }
+          }
+        } else {
+          history.clear();
+          if (learner && currentCoaching?.phase === "review") {
+            const frozenPose = dancerPoseAt(trend, tMs);
+            if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
           }
         }
+      } else {
+        history.clear();
       }
 
-      const smoothed = smoother.current(now);
-      const limbColors = Object.fromEntries(failingLimbs(smoothed).map((limb) => [limb, destructive]));
-      drawSkeleton(ctx, learner, { color: primary, limbColors });
+      drawLearnerPose(ctx, learner, match?.limbs ?? reviewScores, { color: primary, matchColor });
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
-        setTip(tipFor(smoothed));
-        if (mode === "full" && dancer) {
-          setLiveMove(Math.max(0, moveIndexAt(trend.moves, dancer.currentTime * 1000)));
+        if (dancer && learner && match && (!isFull || partIndex !== -1)) {
+          const { score, lagMs, limbs } = match;
+          pauseIfNeeded(dancer, score, () => {
+            // The dancer pose the learner was matched against: the segment's offset, not the current frame.
+            const dancerPose = dancerPoseAt(trend, dancer.currentTime * 1000 - lagMs);
+            return dancerPose
+              ? correctionFor(limbs, limbDirections(learner, learnerSize), limbDirections(dancerPose, dancerSize))
+              : null;
+          }, isFull ? partIndex : undefined);
         }
+        if (partIndex !== -1) setLiveMove(partIndex);
       }
     };
 
@@ -139,22 +203,28 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelAnimationFrame(raf);
       landmarker?.close();
     };
-  }, [webcamRef, trend, mode]);
+  }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
 
-  const finish = () => {
+  const finish = (allPassed: boolean) => {
     setDone(true);
     dancerRef.current?.pause();
-    if (passed.length === trend.moves.length) {
-      setShowConfetti(true);
-    }
+    if (allPassed) setShowConfetti(true);
   };
 
-  const nextMove = () => {
+  const clearPassedPrompt = () => {
+    cancelAdvance();
+    setShowNice(false);
+  };
+
+  const nextMove = (passedCurrent = false) => {
+    clearPassedPrompt();
+    clearCoaching();
     scoresRef.current = [];
-    if (moveIndex === trend.moves.length - 1) finish();
-    else {
+    if (moveIndex === moves.length - 1) {
+      finish(passed.every((didPass, i) => didPass || (passedCurrent && i === moveIndex)));
+    } else {
       setMoveIndex((prev) => prev + 1);
-      setCountingIn(true);
+      setCountingIn(started);
     }
   };
 
@@ -171,47 +241,60 @@ export function PracticeSession({ trend, mode }: Props) {
   const handleCountInDone = useCallback(() => {
     scoresRef.current = [];
     setCountingIn(false);
-    dancerRef.current?.play();
   }, []);
 
   const handleLoop = () => {
+    if (result) return;
+    clearCoaching();
     if (isFull) {
+      if (replayPart && replayPart.endMs < trend.durationMs) {
+        setResumeAtMs(replayPart.endMs);
+        return;
+      }
+      setResumeAtMs(trend.durationMs);
       setResult({
-        final: roundScore(averageScore(scoresRef.current)),
-        moves: trend.moves.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
+        final: roundScore(averageScore(bucketsRef.current.flat())),
+        parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
       setShowConfetti(true);
       return;
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
-    if (!loopPassed) return;
+    if (!loopPassed || advanceTimer.current !== null) return;
+    setCompletedParts((parts) =>
+      isPartPassed(range, parts) ? parts : [...parts, range].sort((a, b) => a.startMs - b.startMs),
+    );
     dancerRef.current?.pause();
-    setPassed((p) => (p.includes(moveIndex) ? p : [...p, moveIndex]));
-    // Last move: show confetti when all done
-    const allPassed = moveIndex === trend.moves.length - 1;
-    if (allPassed) setShowConfetti(true);
     setShowNice(true);
-    setTimeout(() => {
-      setShowNice(false);
-      nextMove();
-    }, 1000);
+    advanceTimer.current = window.setTimeout(() => nextMove(true), 1000);
   };
 
-  // A new key remounts the dancer panel, which restarts the video even when the range is unchanged.
   const restart = () => {
-    scoresRef.current = [];
-    bucketsRef.current = [];
-    setPassed([]);
+    dancerRef.current?.pause();
+    clearPassedPrompt();
+    clearCoaching();
+    setCompletedParts([]);
     setMoveIndex(0);
+    setLiveMove(0);
+    setResumeAtMs(0);
     setDone(false);
     setResult(null);
-    setTip(null);
-    setShowNice(false);
-    setShowConfetti(false);
-    setCountingIn(false);
     setStarted(false);
-    setRunKey((k) => k + 1);
+    setCountingIn(false);
+    setShowConfetti(false);
+    replayAttempt();
+  };
+
+  const changePartLength = (useShorterParts: boolean) => {
+    const nextMoves = useShorterParts ? shortMoves : trend.moves;
+    dancerRef.current?.pause();
+    clearPassedPrompt();
+    clearCoaching();
+    setShorterParts(useShorterParts);
+    setMoveIndex(Math.max(0, moveIndexAt(nextMoves, range.startMs)));
+    setCountingIn(started);
+    replayAttempt();
   };
 
   const learnerNotice =
@@ -222,6 +305,8 @@ export function PracticeSession({ trend, mode }: Props) {
         : null;
   const ready = webcamStatus === "ready" && modelStatus === "ready";
   const shownMove = isFull ? liveMove : moveIndex;
+  const normalSpeed = isFull ? 1 : speed;
+  const replaySpeed = normalSpeed <= 0.5 ? normalSpeed / 2 : 0.5;
   const mirrorToggle = (
     <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
       Mirror
@@ -237,12 +322,13 @@ export function PracticeSession({ trend, mode }: Props) {
               key={runKey}
               trend={trend}
               range={range}
-              speed={isFull ? 1 : speed}
+              speed={coaching?.phase === "replay" ? replaySpeed : normalSpeed}
               mirrored={mirrored}
               videoRef={dancerRef}
               onLoop={handleLoop}
               loop={!isFull}
-              autoStart={started && !countingIn}
+              autoStart={started && !countingIn && !result}
+              highlightedLimb={coaching?.limb}
             />
           </div>
           <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
@@ -266,19 +352,28 @@ export function PracticeSession({ trend, mode }: Props) {
       )}
 
       <div className="grid grid-cols-3 items-center gap-4">
-        <span className="text-sm text-muted-foreground">{`Move ${shownMove + 1} of ${trend.moves.length}`}</span>
-        <span className="min-h-[2rem] text-center text-2xl font-semibold">
-          {showNice ? "Nice!" : null}
+        <span className="text-sm text-muted-foreground">
+          {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
         </span>
-        <span className="min-h-[1.5rem] truncate text-right font-medium">{tip}</span>
+        <span className="min-h-[2rem] text-center text-2xl font-semibold">{showNice ? "Nice!" : null}</span>
+        <Button
+          variant="outline"
+          size="sm"
+          className="justify-self-end"
+          disabled={!started && moveIndex === 0 && !done}
+          onClick={restart}
+        >
+          Reset
+        </Button>
       </div>
+      <CoachingTip coaching={coaching} replaySpeed={replaySpeed} onReplay={replay} />
 
       {!isFull && (
         <div className="flex flex-wrap justify-center gap-1.5">
-          {trend.moves.map((_, i) => (
+          {moves.map((_, i) => (
             <Badge
               key={i}
-              variant={passed.includes(i) ? "default" : "outline"}
+              variant={passed[i] ? "default" : "outline"}
               className={cn(i === moveIndex && !done && "ring-2 ring-ring")}
             >
               {i + 1}
@@ -301,6 +396,16 @@ export function PracticeSession({ trend, mode }: Props) {
             ))}
           </ToggleGroup>
           {mirrorToggle}
+          {shortMoves.length > trend.moves.length && (
+            <Toggle
+              variant="outline"
+              pressed={shorterParts}
+              onPressedChange={changePartLength}
+              disabled={countingIn}
+            >
+              Shorter parts
+            </Toggle>
+          )}
           <Button variant="outline" onClick={skipMove} disabled={countingIn}>
             Skip move
           </Button>
@@ -310,7 +415,7 @@ export function PracticeSession({ trend, mode }: Props) {
       {!isFull && done && (
         <div className="flex flex-col items-center gap-3">
           <p className="text-xl font-semibold">
-            {passed.length === trend.moves.length ? "All moves passed!" : "Now do the full dance"}
+            {passed.every(Boolean) ? "All moves passed!" : "Now do the full dance"}
           </p>
           <div className="flex gap-3">
             <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
@@ -329,7 +434,7 @@ export function PracticeSession({ trend, mode }: Props) {
         <RunResult
           trendId={trend.id}
           final={result.final}
-          moves={result.moves}
+          parts={result.parts}
           onRestart={restart}
         />
       )}
