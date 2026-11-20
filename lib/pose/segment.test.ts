@@ -31,7 +31,7 @@ function run(poseAt: (t: number) => Pose) {
   let last: SegmentScore | null = null;
   for (let t = 1000; t < 5000; t += 33) {
     history.push({ t, pose: poseAt(t) });
-    last = scoreSegment(history.samples(), SQUARE, frames, SAMPLE_MS, SQUARE, motion);
+    last = scoreSegment(history.samples(t), SQUARE, frames, SAMPLE_MS, SQUARE, motion);
     if (last) scores.push(last.score);
   }
   return { avg: scores.reduce((s, v) => s + v, 0) / scores.length, last };
@@ -66,7 +66,7 @@ describe("scoreSegment", () => {
   test("fewer than MIN_SEGMENT_SAMPLES samples gives null", () => {
     const history = new LearnerHistory();
     for (let i = 0; i < MIN_SEGMENT_SAMPLES - 1; i++) history.push({ t: 1000 + i * 33, pose: swing(1000 + i * 33) });
-    expect(scoreSegment(history.samples(), SQUARE, frames, SAMPLE_MS, SQUARE, motion)).toBeNull();
+    expect(scoreSegment(history.samples(1000 + (MIN_SEGMENT_SAMPLES - 2) * 33), SQUARE, frames, SAMPLE_MS, SQUARE, motion)).toBeNull();
   });
 
   test("invisible learner limbs give null", () => {
@@ -75,7 +75,7 @@ describe("scoreSegment", () => {
       const t = 1000 + i * 33;
       history.push({ t, pose: swing(t).map((l) => ({ ...l, v: 0 })) });
     }
-    expect(scoreSegment(history.samples(), SQUARE, frames, SAMPLE_MS, SQUARE, motion)).toBeNull();
+    expect(scoreSegment(history.samples(1000 + 9 * 33), SQUARE, frames, SAMPLE_MS, SQUARE, motion)).toBeNull();
   });
 });
 
@@ -83,13 +83,26 @@ describe("LearnerHistory", () => {
   test("keeps the last second", () => {
     const history = new LearnerHistory();
     for (let t = 0; t <= 2000; t += 100) history.push({ t, pose: standingPose() });
-    expect(history.samples()[0].t).toBe(1000);
+    expect(history.samples(2000)[0].t).toBe(1000);
+  });
+
+  test("samples older than a second before the dancer time are not returned", () => {
+    const history = new LearnerHistory();
+    for (let t = 1000; t <= 2000; t += 33) history.push({ t, pose: swing(t) });
+    expect(history.samples(3500)).toHaveLength(0);
+    expect(scoreSegment(history.samples(3500), SQUARE, frames, SAMPLE_MS, SQUARE, motion)).toBeNull();
+  });
+
+  test("a repeated dancer time replaces the last sample", () => {
+    const history = new LearnerHistory();
+    for (let i = 0; i < 100; i++) history.push({ t: 1000, pose: standingPose() });
+    expect(history.samples(1000)).toHaveLength(1);
   });
 
   test("time going backwards resets the history", () => {
     const history = new LearnerHistory();
     history.push({ t: 2000, pose: standingPose() });
     history.push({ t: 100, pose: standingPose() });
-    expect(history.samples()).toHaveLength(1);
+    expect(history.samples(100)).toHaveLength(1);
   });
 });

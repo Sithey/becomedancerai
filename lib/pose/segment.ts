@@ -55,6 +55,8 @@ export class LearnerHistory {
     const last = this.items[this.items.length - 1];
     // A move loop jumps the dancer time back: samples from the previous loop no longer line up.
     if (last && sample.t < last.t) this.items = [];
+    // A buffering video keeps the same time: replace instead of piling up samples.
+    if (last && sample.t === last.t) this.items.pop();
     this.items.push(sample);
     this.items = this.items.filter((s) => s.t >= sample.t - SEGMENT_MS);
   }
@@ -63,8 +65,8 @@ export class LearnerHistory {
     this.items = [];
   }
 
-  samples(): LearnerSample[] {
-    return this.items;
+  samples(nowMs: number): LearnerSample[] {
+    return this.items.filter((s) => s.t >= nowMs - SEGMENT_MS && s.t <= nowMs);
   }
 }
 

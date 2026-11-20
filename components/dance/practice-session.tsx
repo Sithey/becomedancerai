@@ -93,14 +93,18 @@ export function PracticeSession({ trend, mode }: Props) {
       if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
         const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
-        if (learner) history.push({ t: tMs, pose: learner });
-        const result = scoreSegment(history.samples(), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
-        if (result) {
-          smoother.push(now, result.limbs);
-          scoresRef.current.push(result.score);
-          if (mode === "full") {
-            const i = moveIndexAt(trend.moves, tMs);
-            if (i !== -1) (bucketsRef.current[i] ??= []).push(result.score);
+        // No learner pose this frame: skip scoring, so the last segment isn't credited again.
+        if (learner) {
+          history.push({ t: tMs, pose: learner });
+          const samples = history.samples(tMs);
+          const result = scoreSegment(samples, learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
+          if (result) {
+            smoother.push(now, result.limbs);
+            scoresRef.current.push(result.score);
+            if (mode === "full") {
+              const i = moveIndexAt(trend.moves, tMs);
+              if (i !== -1) (bucketsRef.current[i] ??= []).push(result.score);
+            }
           }
         }
       } else {
