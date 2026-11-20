@@ -3,11 +3,16 @@ import path from "node:path";
 
 // turbopackIgnore: otherwise the build traces the whole project for this dynamic path.
 export const UPLOAD_DIR =
-  process.env.UPLOAD_DIR ?? path.join(/*turbopackIgnore: true*/ process.cwd(), "uploads");
+  process.env.UPLOAD_DIR || path.join(/*turbopackIgnore: true*/ process.cwd(), "uploads");
 
 // The only gate between a URL segment and the filesystem: keep it strict.
 export function isValidVideoFileName(name: string) {
   return /^[a-z0-9]+\.mp4$/.test(name);
+}
+
+// An mp4 file starts with its file type box: a 4-byte size, then "ftyp".
+export function hasMp4FileType(bytes: Uint8Array) {
+  return bytes.length >= 16 && String.fromCharCode(...bytes.subarray(4, 8)) === "ftyp";
 }
 
 export function videoFilePath(fileName: string) {
