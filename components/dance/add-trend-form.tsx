@@ -194,9 +194,10 @@ export function AddTrendForm() {
         seconds: (performance.now() - started) / 1000,
       });
     } catch (err) {
+      // Also aborted when the page is hidden: no frozen progress bar when the user comes back.
+      setProgress(null);
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Processing failed");
-      setProgress(null);
     } finally {
       setDownloading(false);
       setProcessing(false);
