@@ -23,14 +23,3 @@ export function fullRunParts(moves: Move[], durationMs: number): Move[] {
     boundaries.slice(1).map((endMs, index) => ({ startMs: boundaries[index], endMs })),
   );
 }
-
-export function isPartPassed(part: Move, completedParts: Move[]): boolean {
-  let covered = part.startMs;
-  // Completed parts are ordered by start time, so a gap cannot be filled by later entries.
-  for (const { startMs, endMs } of completedParts) {
-    if (startMs > covered) return false;
-    if (endMs >= part.endMs) return true;
-    covered = Math.max(covered, endMs);
-  }
-  return false;
-}
