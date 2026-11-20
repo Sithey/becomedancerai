@@ -1,11 +1,13 @@
 import { angleDeg, limbScore } from "./compare";
-import { LIMBS, limbDirection } from "./landmarks";
+import { MIN_SEGMENT_PX } from "./config";
+import { LIMBS, limbDirection, limbLengthPx } from "./landmarks";
 import { amplitude, type LearnerSample } from "./segment";
 import type { FrameSize, LimbName, LimbScores, PoseFrame, Vec } from "./types";
 
 export type LimbExplanation = {
   limb: LimbName;
   visible: boolean;
+  tooSmall: boolean;
   videoDeg: number | null;
   learnerDeg: number | null;
   diffDeg: number | null;
@@ -46,9 +48,11 @@ export function explainSegment(
     const learner = limbDirection(latest.pose, limb, learnerSize);
     const video = latestDancer && limbDirection(latestDancer, limb, dancerSize);
     const visible = Boolean(learner && video);
+    const learnerLength = limbLengthPx(latest.pose, limb, learnerSize);
     return {
       limb,
       visible,
+      tooSmall: learnerLength !== null && learnerLength < MIN_SEGMENT_PX,
       videoDeg: video ? directionDeg(video) : null,
       learnerDeg: learner ? directionDeg(learner) : null,
       diffDeg: learner && video ? angleDeg(learner, video) : null,

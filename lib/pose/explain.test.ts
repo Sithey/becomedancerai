@@ -55,6 +55,14 @@ describe("explainSegment", () => {
     expect(shin.score).toBeNull();
   });
 
+  test("a learner limb shorter than 30 px is marked too small", () => {
+    const tinyHand = (t: number) => withPoint(swing(t), 19, swing(t)[15].x, swing(t)[15].y + 0.01);
+    const hand = byLimb(explainSegment(samplesOf(tinyHand), SQUARE, frames, SAMPLE_MS, SQUARE, 0)).leftHand;
+    expect(hand.tooSmall).toBe(true);
+    expect(hand.visible).toBe(false);
+    expect(byLimb(explainSegment(samplesOf(swing), SQUARE, frames, SAMPLE_MS, SQUARE, 0)).leftHand.tooSmall).toBe(false);
+  });
+
   test("no samples gives no rows", () => {
     expect(explainSegment([], SQUARE, frames, SAMPLE_MS, SQUARE, 0)).toEqual([]);
   });

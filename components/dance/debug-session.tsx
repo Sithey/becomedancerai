@@ -377,7 +377,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
                   <td className="py-1 text-right font-semibold">{round(r.segment)}</td>
                   <td className="py-1 text-right">{round(r.score)}</td>
                   <td className="py-1 text-right">{`±${round(r.videoAmp)}° / ±${round(r.learnerAmp)}°`}</td>
-                  <td className="py-1 text-right">{r.visible ? "✓" : "–"}</td>
+                  <td className="py-1 text-right">{r.visible ? "✓" : r.tooSmall ? "too small" : "–"}</td>
                 </tr>
               ))}
             </tbody>
