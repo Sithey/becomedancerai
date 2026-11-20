@@ -12,7 +12,6 @@ import { LearnerPanel } from "@/components/dance/learner-panel";
 import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
 import { RunResult } from "@/components/dance/run-result";
 import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
-import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -315,9 +314,35 @@ export function PracticeSession({ trend, mode }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <span className="text-muted-foreground">
+          {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
+        </span>
+        {!isFull && (
+          <ol aria-label="Moves" className="flex flex-wrap gap-2">
+            {moves.map((_, i) => (
+              <li
+                key={i}
+                aria-label={`Move ${i + 1}${passed[i] ? ", passed" : ""}${i === moveIndex && !done ? ", current" : ""}`}
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-full text-sm font-semibold",
+                  passed[i]
+                    ? "bg-primary font-bold text-primary-foreground"
+                    : i === moveIndex && !done
+                      ? "border-2 border-primary font-bold text-primary"
+                      : "border border-foreground/15 text-muted-foreground",
+                )}
+              >
+                {i + 1}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+
       <div className="relative">
         <div className="grid grid-cols-2 gap-6">
-          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+          <figure className="mx-auto flex w-full max-w-[calc(70vh*9/16)] flex-col gap-2.5">
             <DancerPanel
               key={runKey}
               trend={trend}
@@ -330,105 +355,88 @@ export function PracticeSession({ trend, mode }: Props) {
               autoStart={started && !countingIn && !result}
               highlightedLimb={coaching?.limb}
             />
-          </div>
-          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <figcaption className="text-[13px] text-muted-foreground">Follow the bright skeleton.</figcaption>
+          </figure>
+          <figure className="mx-auto flex w-full max-w-[calc(70vh*9/16)] flex-col gap-2.5">
             <LearnerPanel
               videoRef={webcamRef}
               canvasRef={learnerCanvasRef}
               status={webcamStatus}
               notice={learnerNotice}
             />
-          </div>
+            <figcaption className="text-[13px] text-muted-foreground">Body parts in orange need fixing.</figcaption>
+          </figure>
         </div>
         {countingIn && <CountIn onDone={handleCountInDone} />}
       </div>
 
       {!started && (
         <div className="flex justify-center">
-          <Button size="lg" disabled={!ready} onClick={handleStart}>
+          <Button size="lg" className="h-14 rounded-full px-10 text-base" disabled={!ready} onClick={handleStart}>
             {ready ? "Start" : "Getting ready…"}
           </Button>
         </div>
       )}
 
-      <div className="grid grid-cols-3 items-center gap-4">
-        <span className="text-sm text-muted-foreground">
-          {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
-        </span>
-        <span className="min-h-[2rem] text-center text-2xl font-semibold">{showNice ? "Nice!" : null}</span>
-        <Button
-          variant="outline"
-          size="sm"
-          className="justify-self-end"
-          disabled={!started && moveIndex === 0 && !done}
-          onClick={restart}
-        >
-          Reset
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-card px-5 py-4">
+        <div role="status" className="min-h-8 font-heading text-2xl font-bold text-primary">
+          {showNice ? "Nice!" : null}
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {!isFull && !done && (
+            <>
+              <ToggleGroup
+                aria-label="Speed"
+                variant="outline"
+                value={[String(speed)]}
+                onValueChange={(value) => value[0] && setSpeed(Number(value[0]))}
+              >
+                {SPEEDS.map((s) => (
+                  <ToggleGroupItem key={s} value={String(s)}>
+                    {s}×
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              {shortMoves.length > trend.moves.length && (
+                <Toggle
+                  variant="outline"
+                  pressed={shorterParts}
+                  onPressedChange={changePartLength}
+                  disabled={countingIn}
+                >
+                  Shorter parts
+                </Toggle>
+              )}
+            </>
+          )}
+          {(!isFull ? !done : !result) && mirrorToggle}
+          {!isFull && !done && (
+            <Button variant="outline" onClick={skipMove} disabled={countingIn}>
+              Skip move
+            </Button>
+          )}
+          <Button variant="outline" disabled={!started && moveIndex === 0 && !done} onClick={restart}>
+            Reset
+          </Button>
+        </div>
       </div>
       <CoachingTip coaching={coaching} replaySpeed={replaySpeed} onReplay={replay} />
 
-      {!isFull && (
-        <div className="flex flex-wrap justify-center gap-1.5">
-          {moves.map((_, i) => (
-            <Badge
-              key={i}
-              variant={passed[i] ? "default" : "outline"}
-              className={cn(i === moveIndex && !done && "ring-2 ring-ring")}
-            >
-              {i + 1}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {!isFull && !done && (
-        <div className="flex flex-wrap items-center justify-center gap-3">
-          <ToggleGroup
-            variant="outline"
-            value={[String(speed)]}
-            onValueChange={(value) => value[0] && setSpeed(Number(value[0]))}
-          >
-            {SPEEDS.map((s) => (
-              <ToggleGroupItem key={s} value={String(s)}>
-                {s}×
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-          {mirrorToggle}
-          {shortMoves.length > trend.moves.length && (
-            <Toggle
-              variant="outline"
-              pressed={shorterParts}
-              onPressedChange={changePartLength}
-              disabled={countingIn}
-            >
-              Shorter parts
-            </Toggle>
-          )}
-          <Button variant="outline" onClick={skipMove} disabled={countingIn}>
-            Skip move
-          </Button>
-        </div>
-      )}
-
       {!isFull && done && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-semibold">
+        <div className="flex flex-col items-center gap-4 rounded-[1.25rem] border border-border bg-muted p-8 text-center">
+          <p className="font-heading text-2xl font-semibold">
             {passed.every(Boolean) ? "All moves passed!" : "Now do the full dance"}
           </p>
-          <div className="flex gap-3">
-            <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Link href={`/trends/${trend.id}/run`} className={cn(buttonVariants(), "h-12 rounded-full px-6")}>
               Full run
             </Link>
-            <Button variant="outline" onClick={restart}>
+            <Button variant="outline" className="h-12 rounded-full px-6" onClick={restart}>
               Practice again
             </Button>
           </div>
         </div>
       )}
-
-      {isFull && !result && <div className="flex justify-center">{mirrorToggle}</div>}
 
       {isFull && result && (
         <RunResult
