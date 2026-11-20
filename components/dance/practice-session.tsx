@@ -9,6 +9,7 @@ import { CountIn } from "@/components/dance/count-in";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
 import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
+import { MoveTimeline } from "@/components/dance/move-timeline";
 import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
 import { RunResult } from "@/components/dance/run-result";
 import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
@@ -243,6 +244,19 @@ export function PracticeSession({ trend, mode }: Props) {
     nextMove();
   };
 
+  const selectMove = (index: number) => {
+    if (!done && index === moveIndex) return;
+    dancerRef.current?.pause();
+    clearPassedPrompt();
+    clearCoaching();
+    scoresRef.current = [];
+    setDone(false);
+    setShowConfetti(false);
+    setMoveIndex(index);
+    saveLastPracticedMove(trend.id, index);
+    setCountingIn(started);
+  };
+
   const handleStart = () => {
     // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
     if (!isFull) {
@@ -346,24 +360,12 @@ export function PracticeSession({ trend, mode }: Props) {
           {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
         </span>
         {!isFull && (
-          <ol aria-label="Moves" className="flex flex-wrap gap-2">
-            {moves.map((_, i) => (
-              <li
-                key={i}
-                aria-label={`Move ${i + 1}${passed[i] ? ", passed" : ""}${i === moveIndex && !done ? ", current" : ""}`}
-                className={cn(
-                  "flex size-10 items-center justify-center rounded-full text-sm font-semibold",
-                  passed[i]
-                    ? "bg-primary font-bold text-primary-foreground"
-                    : i === moveIndex && !done
-                      ? "border-2 border-primary font-bold text-primary"
-                      : "border border-foreground/15 text-muted-foreground",
-                )}
-              >
-                {i + 1}
-              </li>
-            ))}
-          </ol>
+          <MoveTimeline
+            count={moves.length}
+            current={done ? -1 : moveIndex}
+            passed={passed}
+            onSelect={selectMove}
+          />
         )}
       </div>
 
@@ -396,7 +398,7 @@ export function PracticeSession({ trend, mode }: Props) {
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>
         </div>
-        {countingIn && <CountIn onDone={handleCountInDone} />}
+        {countingIn && <CountIn key={moveIndex} onDone={handleCountInDone} />}
         {/* Over the panels, not below them: on a 900 px laptop screen a button under the panels is off screen. */}
         {!started && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
