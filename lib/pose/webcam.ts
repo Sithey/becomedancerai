@@ -19,7 +19,7 @@ export function useWebcam(): { videoRef: RefObject<HTMLVideoElement | null>; sta
       // mediaDevices is undefined outside a secure context (plain http on a LAN address).
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("getUserMedia is not available");
       const media = await navigator.mediaDevices.getUserMedia({
-        video: { width: 1280, height: 720, facingMode: "user" },
+        video: { width: { ideal: 1920 }, height: { ideal: 1080 }, facingMode: "user" },
         audio: false,
       });
       if (cancelled) {

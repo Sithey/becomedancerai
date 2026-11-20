@@ -1,35 +1,6 @@
-import { PASS_SCORE, SMOOTHING_MS, WINDOW_AFTER_MS, WINDOW_BEFORE_MS } from "./config";
-import { comparePoses, type PoseComparison } from "./compare";
+import { PASS_SCORE, SMOOTHING_MS } from "./config";
 import { LIMBS } from "./landmarks";
-import type { FrameSize, LimbName, LimbScores, Pose, PoseFrame } from "./types";
-
-export function framesInWindow(frames: PoseFrame[], sampleMs: number, tMs: number): PoseFrame[] {
-  const from = Math.max(0, Math.ceil((tMs - WINDOW_BEFORE_MS) / sampleMs));
-  const to = Math.min(frames.length - 1, Math.floor((tMs + WINDOW_AFTER_MS) / sampleMs));
-  const result: PoseFrame[] = [];
-  for (let i = from; i <= to; i++) {
-    if (frames[i].pose) result.push(frames[i]);
-  }
-  return result;
-}
-
-export function bestMatch(
-  learner: Pose | null,
-  learnerSize: FrameSize,
-  frames: PoseFrame[],
-  sampleMs: number,
-  tMs: number,
-  dancerSize: FrameSize,
-): PoseComparison | null {
-  if (!learner) return null;
-  let best: PoseComparison | null = null;
-  for (const frame of framesInWindow(frames, sampleMs, tMs)) {
-    const comparison = comparePoses(learner, learnerSize, frame.pose!, dancerSize);
-    if (comparison.score === null) continue;
-    if (best === null || comparison.score > best.score!) best = { ...comparison, matchT: frame.t };
-  }
-  return best;
-}
+import type { LimbName, LimbScores } from "./types";
 
 export class LimbSmoother {
   private entries: { t: number; limbs: LimbScores }[] = [];

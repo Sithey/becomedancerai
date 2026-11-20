@@ -1,13 +1,17 @@
-import { MAX_ANGLE_DEG } from "./config";
+import { FULL_SCORE_DEG, ZERO_SCORE_DEG } from "./config";
 import { LIMBS, limbDirection } from "./landmarks";
 import type { FrameSize, LimbName, LimbScores, Pose, Vec } from "./types";
 
 export type PoseComparison = { limbs: LimbScores; score: number | null; matchT?: number };
 
-export function limbScore(a: Vec, b: Vec): number {
+export function angleDeg(a: Vec, b: Vec): number {
   const dot = Math.min(1, Math.max(-1, a.x * b.x + a.y * b.y));
-  const angleDeg = (Math.acos(dot) * 180) / Math.PI;
-  return Math.min(100, Math.max(0, 100 * (1 - angleDeg / MAX_ANGLE_DEG)));
+  return (Math.acos(dot) * 180) / Math.PI;
+}
+
+export function limbScore(a: Vec, b: Vec): number {
+  const over = (angleDeg(a, b) - FULL_SCORE_DEG) / (ZERO_SCORE_DEG - FULL_SCORE_DEG);
+  return Math.min(100, Math.max(0, 100 * (1 - over)));
 }
 
 export function comparePoses(

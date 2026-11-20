@@ -38,6 +38,10 @@ export function correctionFor(
   }
   if (worst === null) return null;
 
+  if (worst === "head" || worst === "torso") {
+    return { limb: worst, problem: `Your ${worst} was out of position.`, tip: `Watch your ${worst}` };
+  }
+
   const side: Side = worst.startsWith("left") ? "left" : "right";
   if (worst.endsWith("Thigh") || worst.endsWith("Shin")) {
     const learnerBend = kneeBend(learnerDirs, side);
@@ -60,18 +64,19 @@ export function correctionFor(
     };
   }
 
-  const learnerArm = learnerDirs[worst];
-  const dancerArm = dancerDirs[worst];
+  const part = worst.endsWith("Hand") ? "hand" : "arm";
+  const learnerDir = learnerDirs[worst];
+  const dancerDir = dancerDirs[worst];
   // Image y increases downwards, so a larger y calls for raising the arm.
-  const difference = learnerArm && dancerArm ? learnerArm.y - dancerArm.y : 0;
+  const difference = learnerDir && dancerDir ? learnerDir.y - dancerDir.y : 0;
   if (!difference) {
-    return { limb: worst, problem: `Your ${side} arm was out of position.`, tip: null };
+    return { limb: worst, problem: `Your ${side} ${part} was out of position.`, tip: null };
   }
   const tooLow = difference > 0;
   return {
     limb: worst,
-    problem: `Your ${side} arm was ${tooLow ? "too low" : "too high"}.`,
-    tip: `${tooLow ? "Raise" : "Lower"} your ${side} arm`,
+    problem: `Your ${side} ${part} was ${tooLow ? "too low" : "too high"}.`,
+    tip: `${tooLow ? "Raise" : "Lower"} your ${side} ${part}`,
   };
 }
 

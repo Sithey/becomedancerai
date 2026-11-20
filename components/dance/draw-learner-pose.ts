@@ -7,6 +7,8 @@ const scoredLimbs = Object.keys(LIMBS) as LimbName[];
 const limbsByJoint = new Map<number, LimbName[]>();
 for (const limb of scoredLimbs) {
   for (const joint of LIMBS[limb]) {
+    // Midpoint endpoints (head, torso) and face landmarks have no joint dot on the drawn skeleton.
+    if (typeof joint !== "number" || joint < 11) continue;
     const connected = limbsByJoint.get(joint) ?? [];
     connected.push(limb);
     limbsByJoint.set(joint, connected);

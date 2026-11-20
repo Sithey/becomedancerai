@@ -70,3 +70,13 @@ test("no tip when everything passes", () => {
   expect(tipFor({ leftForearm: 70 }, { leftForearm: down }, { leftForearm: up })).toBeNull();
   expect(tipFor({}, {}, {})).toBeNull();
 });
+
+test("hands get their own raise/lower cue", () => {
+  expect(tipFor({ leftHand: 10 }, { leftHand: down }, { leftHand: up })).toBe("Raise your left hand");
+  expect(tipFor({ rightHand: 10 }, { rightHand: up }, { rightHand: down })).toBe("Lower your right hand");
+});
+
+test("head and torso have no side", () => {
+  expect(tipFor({ head: 10 }, { head: up }, { head: right })).toBe("Watch your head");
+  expect(tipFor({ torso: 10 }, { torso: up }, { torso: right })).toBe("Watch your torso");
+});

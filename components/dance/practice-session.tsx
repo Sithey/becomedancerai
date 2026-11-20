@@ -20,7 +20,8 @@ import { comparePoses } from "@/lib/pose/compare";
 import { themeColor } from "@/lib/pose/draw";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
-import { averageScore, bestMatch, isPassed } from "@/lib/pose/scoring";
+import { averageScore, isPassed } from "@/lib/pose/scoring";
+import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
 import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
@@ -113,6 +114,8 @@ export function PracticeSession({ trend, mode }: Props) {
     const learnerCanvas = learnerCanvasRef.current;
     const matchColor = learnerCanvas ? getComputedStyle(learnerCanvas).color : "";
     const dancerSize = { width: trend.width, height: trend.height };
+    const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
+    const history = new LearnerHistory();
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -129,7 +132,7 @@ export function PracticeSession({ trend, mode }: Props) {
       const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
 
       const dancer = dancerRef.current;
-      let match: ReturnType<typeof bestMatch> = null;
+      let match: SegmentScore | null = null;
       let reviewScores: LimbScores | undefined;
       let partIndex = -1;
       if (dancer && !dancer.seeking && dancer.readyState >= 2) {
@@ -137,8 +140,12 @@ export function PracticeSession({ trend, mode }: Props) {
         const currentCoaching = getCoaching();
         if (isFull) partIndex = moveIndexAt(runParts, tMs);
         if (!dancer.paused) {
-          match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
-          if (match && match.score !== null) {
+          // No learner pose this frame: skip scoring, so the last segment isn't credited again.
+          if (learner) {
+            history.push({ t: tMs, pose: learner });
+            match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
+          }
+          if (match) {
             if (!isFull) {
               scoresRef.current.push(match.score);
             } else if (partIndex !== -1 && (
@@ -147,20 +154,26 @@ export function PracticeSession({ trend, mode }: Props) {
               (bucketsRef.current[partIndex] ??= []).push(match.score);
             }
           }
-        } else if (learner && currentCoaching?.phase === "review") {
-          const frozenPose = dancerPoseAt(trend, tMs);
-          if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
+        } else {
+          history.clear();
+          if (learner && currentCoaching?.phase === "review") {
+            const frozenPose = dancerPoseAt(trend, tMs);
+            if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
+          }
         }
+      } else {
+        history.clear();
       }
 
       drawLearnerPose(ctx, learner, match?.limbs ?? reviewScores, { color: primary, matchColor });
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
-        if (dancer && learner && match && match.score !== null && (!isFull || partIndex !== -1)) {
-          const { score, matchT, limbs } = match;
+        if (dancer && learner && match && (!isFull || partIndex !== -1)) {
+          const { score, lagMs, limbs } = match;
           pauseIfNeeded(dancer, score, () => {
-            const dancerPose = trend.poses.find((frame) => frame.t === matchT)?.pose;
+            // The dancer pose the learner was matched against: the segment's offset, not the current frame.
+            const dancerPose = dancerPoseAt(trend, dancer.currentTime * 1000 - lagMs);
             return dancerPose
               ? correctionFor(limbs, limbDirections(learner, learnerSize), limbDirections(dancerPose, dancerSize))
               : null;
