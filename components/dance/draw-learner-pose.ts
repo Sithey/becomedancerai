@@ -1,9 +1,11 @@
 import { PASS_SCORE } from "@/lib/pose/config";
+import { drawSkeleton } from "@/lib/pose/draw";
 import { LIMBS } from "@/lib/pose/landmarks";
 import type { LimbName, LimbScores, Pose } from "@/lib/pose/types";
 
+const scoredLimbs = Object.keys(LIMBS) as LimbName[];
 const limbsByJoint = new Map<number, LimbName[]>();
-for (const limb of Object.keys(LIMBS) as LimbName[]) {
+for (const limb of scoredLimbs) {
   for (const joint of LIMBS[limb]) {
     const connected = limbsByJoint.get(joint) ?? [];
     connected.push(limb);
@@ -11,19 +13,26 @@ for (const limb of Object.keys(LIMBS) as LimbName[]) {
   }
 }
 
-export function drawMatchingJoints(
+export function drawLearnerPose(
   ctx: CanvasRenderingContext2D,
   pose: Pose | null,
   scores: LimbScores | undefined,
-  color: string,
+  { color, matchColor }: { color: string; matchColor: string },
 ) {
-  if (!pose || !scores || !color) return;
+  const limbColors: Partial<Record<LimbName, string>> = {};
+  if (scores && matchColor) {
+    for (const limb of scoredLimbs) {
+      if ((scores[limb] ?? 0) >= PASS_SCORE) limbColors[limb] = matchColor;
+    }
+  }
+  drawSkeleton(ctx, pose, { color, limbColors });
+  if (!pose || !scores || !matchColor) return;
 
   const { width, height } = ctx.canvas;
-  ctx.fillStyle = color;
+  ctx.fillStyle = matchColor;
   for (const [index, limbs] of limbsByJoint) {
     const joint = pose[index];
-    if (!joint || !limbs.every((limb) => (scores[limb] ?? 0) >= PASS_SCORE)) continue;
+    if (!joint || !limbs.every((limb) => limbColors[limb] !== undefined)) continue;
 
     ctx.beginPath();
     ctx.arc(joint.x * width, joint.y * height, height / 80, 0, Math.PI * 2);

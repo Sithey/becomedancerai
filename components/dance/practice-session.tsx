@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachingTip } from "@/components/dance/coaching-tip";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
-import { drawMatchingJoints } from "@/components/dance/draw-matching-joints";
+import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
 import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
@@ -14,7 +14,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { comparePoses } from "@/lib/pose/compare";
-import { drawSkeleton, themeColor } from "@/lib/pose/draw";
+import { themeColor } from "@/lib/pose/draw";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, bestMatch, isPassed } from "@/lib/pose/scoring";
@@ -131,8 +131,7 @@ export function PracticeSession({ trend, mode }: Props) {
         }
       }
 
-      drawSkeleton(ctx, learner, { color: primary });
-      drawMatchingJoints(ctx, learner, match?.limbs ?? reviewScores, matchColor);
+      drawLearnerPose(ctx, learner, match?.limbs ?? reviewScores, { color: primary, matchColor });
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
