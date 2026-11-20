@@ -1,6 +1,4 @@
 export const PASS_SCORE = 70;
-export const WINDOW_BEFORE_MS = 400;
-export const WINDOW_AFTER_MS = 100;
 export const SMOOTHING_MS = 500;
 export const MOVE_MIN_MS = 2000;
 export const MOVE_MAX_MS = 4000;

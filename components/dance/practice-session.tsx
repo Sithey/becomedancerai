@@ -12,7 +12,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
-import { averageScore, bestMatch, failingLimbs, isPassed, LimbSmoother } from "@/lib/pose/scoring";
+import { averageScore, failingLimbs, isPassed, LimbSmoother } from "@/lib/pose/scoring";
+import { LearnerHistory, limbMotion, scoreSegment } from "@/lib/pose/segment";
 import { tipFor } from "@/lib/pose/tips";
 import type { Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
@@ -72,6 +73,8 @@ export function PracticeSession({ trend, mode }: Props) {
     const primary = themeColor("primary");
     const destructive = themeColor("destructive");
     const dancerSize = { width: trend.width, height: trend.height };
+    const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
+    const history = new LearnerHistory();
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -90,15 +93,18 @@ export function PracticeSession({ trend, mode }: Props) {
       if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
         const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
-        const match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
-        if (match && match.score !== null) {
-          smoother.push(now, match.limbs);
-          scoresRef.current.push(match.score);
+        if (learner) history.push({ t: tMs, pose: learner });
+        const result = scoreSegment(history.samples(), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
+        if (result) {
+          smoother.push(now, result.limbs);
+          scoresRef.current.push(result.score);
           if (mode === "full") {
             const i = moveIndexAt(trend.moves, tMs);
-            if (i !== -1) (bucketsRef.current[i] ??= []).push(match.score);
+            if (i !== -1) (bucketsRef.current[i] ??= []).push(result.score);
           }
         }
+      } else {
+        history.clear();
       }
 
       const smoothed = smoother.current(now);
