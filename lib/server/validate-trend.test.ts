@@ -36,7 +36,7 @@ test("valid form passes", () => expect(parseNewTrend(validForm()).ok).toBe(true)
 
 test.each([
   [{ title: "  " }, "Title is required"],
-  [{ title: "x".repeat(81) }, "Title must be 80 characters or fewer"],
+  [{ title: "x".repeat(33) }, "Title must be 32 characters or fewer"],
   [{ video: new File([new Uint8Array(10)], "a.mov", { type: "video/quicktime" }) }, "Video must be an mp4"],
   [{ video: mp4(0) }, "Video must be an mp4"],
   [{ video: mp4(50 * 1024 * 1024 + 1) }, "Video must be under 50 MB"],

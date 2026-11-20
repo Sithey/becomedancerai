@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { MAX_DURATION_MS, SAMPLE_MS } from "@/lib/pose/config";
+import { MAX_DURATION_MS, MAX_TITLE_LENGTH, MIN_DETECTION_RATE, SAMPLE_MS } from "@/lib/pose/config";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { extractPoses } from "@/lib/pose/extract";
 import { splitMoves } from "@/lib/pose/split";
@@ -20,6 +20,8 @@ type Result = {
   durationMs: number;
   seconds: number;
 };
+
+const TITLE_TOO_LONG = `Title must be ${MAX_TITLE_LENGTH} characters or fewer`;
 
 const TIKTOK_DOWNLOAD_ERROR = "Couldn't download this TikTok. Save the video and upload the mp4 instead.";
 
@@ -69,6 +71,7 @@ export function AddTrendForm() {
   const previewRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -103,6 +106,24 @@ export function AddTrendForm() {
     setError(null);
   }
 
+  function resetForm() {
+    abortRef.current?.abort();
+    resetVideo();
+    setTitle("");
+    setTiktokUrl("");
+    setDownloading(false);
+    setProcessing(false);
+    setSaving(false);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function titleError(): string | null {
+    const trimmed = title.trim();
+    if (!trimmed) return "Title is required";
+    if (trimmed.length > MAX_TITLE_LENGTH) return TITLE_TOO_LONG;
+    return null;
+  }
+
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const next = e.target.files?.[0] ?? null;
     resetVideo();
@@ -116,6 +137,12 @@ export function AddTrendForm() {
   async function process() {
     const video = extractRef.current;
     if (!video) return;
+    // A TikTok link can be titled after the download; an upload needs its title first.
+    const invalidTitle = source === "upload" ? titleError() : null;
+    if (invalidTitle) {
+      setError(invalidTitle);
+      return;
+    }
     const controller = new AbortController();
     abortRef.current = controller;
     setError(null);
@@ -138,13 +165,18 @@ export function AddTrendForm() {
       const started = performance.now();
       await loadVideo(video, url);
       const durationMs = Math.round(video.duration * 1000);
-      if (source === "tiktok" && (!Number.isFinite(durationMs) || durationMs <= 0)) {
+      if (!Number.isFinite(durationMs) || durationMs <= 0) {
         throw new Error("Could not read this video");
       }
-      if (source === "tiktok" && durationMs > MAX_DURATION_MS) {
-        throw new Error("Videos must be 90 seconds or shorter");
+      // Checked before the long pose extraction: the server would refuse it anyway.
+      if (durationMs > MAX_DURATION_MS) {
+        throw new Error(`Videos must be ${MAX_DURATION_MS / 1000} seconds or shorter`);
       }
       const frames = await extractPoses(video, setProgress, controller.signal);
+      const detected = frames.filter((f) => f.pose !== null).length;
+      if (frames.length === 0 || detected / frames.length < MIN_DETECTION_RATE) {
+        throw new Error("We couldn't find a dancer in this video. Try one with a single dancer, full body visible.");
+      }
       setResult({
         frames,
         moves: splitMoves(frames, durationMs),
@@ -165,11 +197,16 @@ export function AddTrendForm() {
 
   async function save() {
     if (!file || !result) return;
+    const invalidTitle = titleError();
+    if (invalidTitle) {
+      setError(invalidTitle);
+      return;
+    }
     setSaving(true);
     setError(null);
     const body = new FormData();
     body.set("video", file);
-    body.set("title", title);
+    body.set("title", title.trim());
     body.set("width", String(result.width));
     body.set("height", String(result.height));
     body.set("durationMs", String(result.durationMs));
@@ -224,7 +261,14 @@ export function AddTrendForm() {
       {source === "upload" ? (
         <div className="flex flex-col gap-2">
           <Label htmlFor="video">Video (mp4)</Label>
-          <Input id="video" type="file" accept="video/mp4" disabled={busy} onChange={onFileChange} />
+          <Input
+            ref={fileInputRef}
+            id="video"
+            type="file"
+            accept="video/mp4"
+            disabled={busy}
+            onChange={onFileChange}
+          />
         </div>
       ) : (
         <div className="flex flex-col gap-2">
@@ -243,18 +287,44 @@ export function AddTrendForm() {
       )}
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
-        <Input id="title" value={title} disabled={busy} onChange={(e) => setTitle(e.target.value)} />
+        <Input
+          id="title"
+          value={title}
+          maxLength={MAX_TITLE_LENGTH}
+          disabled={busy}
+          onChange={(e) => setTitle(e.target.value.slice(0, MAX_TITLE_LENGTH))}
+        />
+        <span className="text-xs text-muted-foreground">{`${title.length}/${MAX_TITLE_LENGTH}`}</span>
       </div>
 
-      {source === "upload" ? (
-        <Button className="self-start" disabled={busy || !file || !title.trim()} onClick={process}>
-          Process
-        </Button>
-      ) : (
-        <Button className="self-start" disabled={busy || !tiktokUrl.trim()} onClick={process}>
-          {downloading ? "Downloading…" : "Get video"}
-        </Button>
+      {error && (
+        <div
+          role="alert"
+          className="flex flex-col items-start gap-3 rounded-[0.875rem] border border-destructive/30 bg-destructive/10 p-4 text-destructive"
+        >
+          <p className="text-sm font-medium">{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={resetForm}
+            className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            Choose another video
+          </Button>
+        </div>
       )}
+
+      {!result &&
+        (source === "upload" ? (
+          <Button className="self-start" disabled={busy || !file || !title.trim() || Boolean(error)} onClick={process}>
+            Process
+          </Button>
+        ) : (
+          <Button className="self-start" disabled={busy || !tiktokUrl.trim() || Boolean(error)} onClick={process}>
+            {downloading ? "Downloading…" : "Get video"}
+          </Button>
+        ))}
 
       {progress !== null && !result && (
         <div className="flex flex-col gap-2">
@@ -291,7 +361,6 @@ export function AddTrendForm() {
         </div>
       )}
 
-      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }
