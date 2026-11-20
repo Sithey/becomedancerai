@@ -18,9 +18,9 @@ import { FRAMED, framingState, sameFraming, type Framing } from "@/lib/pose/fram
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, isPassed } from "@/lib/pose/scoring";
-import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
+import { LearnerHistory, limbMotion, limbWeight, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
-import type { FrameSize, Pose, TrendData } from "@/lib/pose/types";
+import type { FrameSize, LimbScores, Pose, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
 import {
   getProgress,
@@ -109,6 +109,7 @@ export function PracticeSession({ trend, mode }: Props) {
     learner: Pose | null,
     learnerSize: FrameSize,
     dancerSize: FrameSize,
+    weights: LimbScores | undefined,
     updateUi: boolean,
   ) => {
     if (!started || countingIn || showResults || timeMs < range.startMs || timeMs > range.endMs) return;
@@ -128,7 +129,7 @@ export function PracticeSession({ trend, mode }: Props) {
       const reference = dancerPoseAt(trend, timeMs - match.lagMs);
       if (reference) {
         frame.correction = correctionFor(
-          match.limbs, limbDirections(learner, learnerSize), limbDirections(reference, dancerSize),
+          match.limbs, limbDirections(learner, learnerSize), limbDirections(reference, dancerSize), weights,
         ) ?? undefined;
       }
     }
@@ -155,8 +156,7 @@ export function PracticeSession({ trend, mode }: Props) {
     let lastUiUpdate = -Infinity;
     let lastSeen = performance.now();
     const primary = themeColor("primary");
-    const learnerCanvas = learnerCanvasRef.current;
-    const matchColor = learnerCanvas ? getComputedStyle(learnerCanvas).color : "";
+    const destructive = themeColor("destructive");
     const dancerSize = { width: trend.width, height: trend.height };
     const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
     const history = new LearnerHistory();
@@ -186,12 +186,14 @@ export function PracticeSession({ trend, mode }: Props) {
           history.push({ t: tMs, pose: learner });
           match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
         }
-        recordFrame(tMs, match, learner, learnerSize, dancerSize, updateUi);
+        const motionAt = match && motion[Math.round((tMs - match.lagMs) / trend.sampleMs)];
+        const weights = motionAt && Object.fromEntries(Object.entries(motionAt).map(([limb, deg]) => [limb, limbWeight(deg)]));
+        recordFrame(tMs, match, learner, learnerSize, dancerSize, weights, updateUi);
       } else {
         history.clear();
       }
 
-      drawLearnerPose(ctx, learner, match?.limbs, { color: guideColor(primary), matchColor });
+      drawLearnerPose(ctx, learner, match?.limbs, { color: guideColor(primary), passColor: primary, failColor: destructive });
 
       if (updateUi) {
         lastUiUpdate = now;

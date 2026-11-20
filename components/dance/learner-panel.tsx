@@ -40,7 +40,7 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice, framing }: P
         onResize={fitCanvas}
         className="absolute inset-0 size-full -scale-x-100 object-cover brightness-50"
       />
-      <canvas ref={canvasRef} className="absolute inset-0 size-full -scale-x-100 object-cover text-green-400" />
+      <canvas ref={canvasRef} className="absolute inset-0 size-full -scale-x-100 object-cover" />
       <GhostOutline visible={status === "ready" && !notice && framing?.inFrame === false} />
       {message && (
         <div className="absolute inset-0 flex items-center justify-center p-6">

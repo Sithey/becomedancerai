@@ -178,7 +178,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
         history.clear();
       }
 
-      // Same colors as Practice: segment scores smoothed over half a second.
+      // Same colors as Practice (primary passing, destructive failing), but smoothed over half a second; Practice colors the raw segment scores.
       const failing = failingLimbs(smoother.current(now));
       drawSkeleton(ctx, learner, {
         color: primary,
