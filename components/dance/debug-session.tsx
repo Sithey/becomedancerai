@@ -11,6 +11,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PASS_SCORE } from "@/lib/pose/config";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { explainSegment, type LimbExplanation } from "@/lib/pose/explain";
+import { framingIssue } from "@/lib/pose/framing";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { failingLimbs } from "@/lib/pose/scoring";
@@ -21,6 +22,8 @@ import { cn } from "cn";
 
 const SPEEDS = [0.5, 0.75, 1];
 const UI_UPDATE_MS = 250;
+// Time to walk back into position after clicking Start.
+const COUNTDOWN_S = 5;
 
 const LABELS: Record<LimbName, string> = {
   leftUpperArm: "Left upper arm",
@@ -77,6 +80,8 @@ function DebugRun({ trend }: { trend: TrendData }) {
   const learnerCanvasRef = useRef<HTMLCanvasElement>(null);
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "error">("loading");
   const [started, setStarted] = useState(false);
+  const [countdown, setCountdown] = useState<number | null>(null);
+  const [framing, setFraming] = useState<string | null>("No one detected");
   const [move, setMove] = useState<number | "full">(0);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
@@ -86,6 +91,19 @@ function DebugRun({ trend }: { trend: TrendData }) {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const recordingRef = useRef(false);
   const framesRef = useRef<RecordedFrame[]>([]);
+
+  useEffect(() => {
+    if (countdown === null) return;
+    const timer = setTimeout(() => {
+      if (countdown > 1) {
+        setCountdown(countdown - 1);
+        return;
+      }
+      setCountdown(null);
+      setStarted(true);
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const fullRange = useMemo(() => ({ startMs: 0, endMs: trend.durationMs }), [trend.durationMs]);
   const range = move === "full" ? fullRange : trend.moves[move];
@@ -102,6 +120,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
     const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
     const history = new LearnerHistory();
     let current: Live = { score: null, lagMs: null, samples: 0, rows: [] };
+    let currentFraming: string | null = "No one detected";
 
     const frame = () => {
       raf = requestAnimationFrame(frame);
@@ -118,6 +137,8 @@ function DebugRun({ trend }: { trend: TrendData }) {
       const world = detection.worldLandmarks[0]
         ? detection.worldLandmarks[0].map((l) => ({ x: round3(l.x), y: round3(l.y), z: round3(l.z), v: round3(l.visibility) }))
         : null;
+
+      currentFraming = framingIssue(learner);
 
       const dancer = dancerRef.current;
       if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
@@ -160,6 +181,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
         setLive(current);
+        setFraming(currentFraming);
         setRecordedCount(framesRef.current.length);
       }
     };
@@ -263,12 +285,12 @@ function DebugRun({ trend }: { trend: TrendData }) {
         <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
           Mirror
         </Toggle>
-        {!started && (
-          <Button disabled={!ready} onClick={() => setStarted(true)}>
+        {!started && countdown === null && (
+          <Button disabled={!ready} onClick={() => setCountdown(COUNTDOWN_S)}>
             {ready ? "Start" : "Getting ready…"}
           </Button>
         )}
-        <Button variant={recording ? "destructive" : "outline"} disabled={!started} onClick={toggleRecording}>
+        <Button variant={recording ? "destructive" : "outline"} disabled={!ready} onClick={toggleRecording}>
           {recording ? `■ Stop (${recordedCount} frames)` : "● Record"}
         </Button>
         <Button variant="outline" disabled={recordedCount === 0} onClick={save}>
@@ -277,7 +299,16 @@ function DebugRun({ trend }: { trend: TrendData }) {
         {saveMessage && <span className="text-sm text-muted-foreground">{saveMessage}</span>}
       </div>
 
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)] gap-6">
+      <div className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)] gap-6">
+        {countdown !== null && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-2 bg-background/70">
+            <span className="text-8xl font-bold">{countdown}</span>
+            <span className="text-xl font-semibold">Get in place</span>
+            <span className={cn("text-lg", framing ? "text-destructive" : "text-muted-foreground")}>
+              {framing ?? "Framing OK"}
+            </span>
+          </div>
+        )}
         <div className="mx-auto w-full max-w-[calc(60vh*9/16)]">
           <DancerPanel
             trend={trend}
@@ -301,6 +332,9 @@ function DebugRun({ trend }: { trend: TrendData }) {
         <div className="flex flex-col gap-3">
           <p className="text-lg font-semibold">
             {`Live score ${round(live.score)} · delay ${round(live.lagMs)} ms · ${live.samples} samples`}
+          </p>
+          <p className={cn("text-sm", framing ? "text-destructive" : "text-muted-foreground")}>
+            {`Framing: ${framing ?? "OK"}`}
           </p>
           <table className="w-full text-sm tabular-nums">
             <thead className="text-left text-muted-foreground">
