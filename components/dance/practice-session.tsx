@@ -25,6 +25,7 @@ import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/l
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
 import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
+import { getProgress, saveLastPracticedMove, saveMoveScore, saveRunScore } from "@/lib/progress";
 import { cn } from "cn";
 
 const SPEEDS = [0.5, 0.75, 1];
@@ -228,7 +229,11 @@ export function PracticeSession({ trend, mode }: Props) {
     if (moveIndex === moves.length - 1) {
       finish(passed.every((didPass, i) => didPass || (passedCurrent && i === moveIndex)));
     } else {
-      setMoveIndex((prev) => prev + 1);
+      const nextIndex = moveIndex + 1;
+      setMoveIndex(nextIndex);
+      if (!isFull) {
+        saveLastPracticedMove(trend.id, nextIndex);
+      }
       setCountingIn(started);
     }
   };
@@ -239,6 +244,11 @@ export function PracticeSession({ trend, mode }: Props) {
   };
 
   const handleStart = () => {
+    // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
+    if (!isFull) {
+      const last = getProgress(trend.id).lastMovePracticed;
+      if (last > 0) setMoveIndex(Math.min(moves.length - 1, last));
+    }
     setStarted(true);
     setCountingIn(true);
   };
@@ -257,12 +267,20 @@ export function PracticeSession({ trend, mode }: Props) {
         return;
       }
       setResumeAtMs(trend.durationMs);
+      const finalScore = roundScore(averageScore(bucketsRef.current.flat()));
+      if (finalScore !== null) {
+        saveRunScore(trend.id, finalScore);
+      }
       setResult({
-        final: roundScore(averageScore(bucketsRef.current.flat())),
+        final: finalScore,
         parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
       setShowConfetti(true);
       return;
+    }
+    const loopScore = roundScore(averageScore(scoresRef.current));
+    if (loopScore !== null) {
+      saveMoveScore(trend.id, moveIndex, loopScore);
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
@@ -281,6 +299,9 @@ export function PracticeSession({ trend, mode }: Props) {
     clearCoaching();
     setCompletedParts([]);
     setMoveIndex(0);
+    if (!isFull) {
+      saveLastPracticedMove(trend.id, 0);
+    }
     setLiveMove(0);
     setResumeAtMs(0);
     setDone(false);

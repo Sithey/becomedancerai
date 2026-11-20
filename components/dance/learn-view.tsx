@@ -6,6 +6,8 @@ import { DancerPanel } from "@/components/dance/dancer-panel";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useTrendProgress } from "@/components/dance/use-trend-progress";
+import { resetProgress } from "@/lib/progress";
 import type { TrendData } from "@/lib/pose/types";
 import { cn } from "cn";
 
@@ -15,8 +17,17 @@ export function LearnView({ trend }: { trend: TrendData }) {
   const [moveIndex, setMoveIndex] = useState(0);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
+  const progress = useTrendProgress(trend.id);
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastIndex = trend.moves.length - 1;
+  const hasProgress =
+    progress.bestRunScore !== null || progress.lastMovePracticed > 0 || Object.keys(progress.moveScores).length > 0;
+
+  const handleReset = () => {
+    resetProgress(trend.id);
+    setConfirmingReset(false);
+  };
 
   return (
     <div className="flex flex-wrap items-start gap-8">
@@ -124,6 +135,42 @@ export function LearnView({ trend }: { trend: TrendData }) {
               Full run
             </Link>
           </div>
+        </section>
+
+        <section
+          aria-labelledby="progress-title"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-card p-6"
+        >
+          <div className="flex flex-col gap-1">
+            <h2 id="progress-title" className="font-heading text-xl font-semibold">
+              Your progress
+            </h2>
+            <span className="text-muted-foreground">
+              {progress.bestRunScore === null
+                ? "No full run yet."
+                : `Best full run: ${progress.bestRunScore}${
+                    progress.firstRunScore !== null && progress.firstRunScore !== progress.bestRunScore
+                      ? ` · first try ${progress.firstRunScore}`
+                      : ""
+                  }`}
+            </span>
+          </div>
+          {hasProgress &&
+            (confirmingReset ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Reset all progress?</span>
+                <Button variant="destructive" onClick={handleReset}>
+                  Reset
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmingReset(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" className="rounded-full" onClick={() => setConfirmingReset(true)}>
+                Reset progress
+              </Button>
+            ))}
         </section>
       </div>
     </div>
