@@ -6,13 +6,19 @@ type Props = {
   onDone: () => void;
 };
 
+// One context for every beep: each AudioContext keeps an audio thread running until it is closed.
+let audio: AudioContext | null = null;
+
 function playBeep(freq: number, duration = 0.08) {
   try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    if (!audio || audio.state === "closed") {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      audio = new AudioCtx();
+    }
+    const ctx = audio;
     ctx.resume().then(() => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
