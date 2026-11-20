@@ -2,8 +2,9 @@
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Confetti } from "@/components/dance/confetti";
+import { CountIn } from "@/components/dance/count-in";
 import { RunResult } from "@/components/dance/run-result";
 import { DancerPanel } from "@/components/dance/dancer-panel";
 import { LearnerPanel } from "@/components/dance/learner-panel";
@@ -57,6 +58,7 @@ export function PracticeSession({ trend, mode }: Props) {
   const [tip, setTip] = useState<string | null>(null);
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
+  const [countingIn, setCountingIn] = useState(false);
 
   // Frame scores of the current loop (moves mode) or of the whole run (full mode).
   const scoresRef = useRef<number[]>([]);
@@ -150,8 +152,27 @@ export function PracticeSession({ trend, mode }: Props) {
   const nextMove = () => {
     scoresRef.current = [];
     if (moveIndex === trend.moves.length - 1) finish();
-    else setMoveIndex(moveIndex + 1);
+    else {
+      setMoveIndex((prev) => prev + 1);
+      setCountingIn(true);
+    }
   };
+
+  const skipMove = () => {
+    dancerRef.current?.pause();
+    nextMove();
+  };
+
+  const handleStart = () => {
+    setStarted(true);
+    setCountingIn(true);
+  };
+
+  const handleCountInDone = useCallback(() => {
+    scoresRef.current = [];
+    setCountingIn(false);
+    dancerRef.current?.play();
+  }, []);
 
   const handleLoop = () => {
     if (isFull) {
@@ -165,6 +186,7 @@ export function PracticeSession({ trend, mode }: Props) {
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
     if (!loopPassed) return;
+    dancerRef.current?.pause();
     setPassed((p) => (p.includes(moveIndex) ? p : [...p, moveIndex]));
     // Last move: show confetti when all done
     const allPassed = moveIndex === trend.moves.length - 1;
@@ -187,6 +209,8 @@ export function PracticeSession({ trend, mode }: Props) {
     setTip(null);
     setShowNice(false);
     setShowConfetti(false);
+    setCountingIn(false);
+    setStarted(false);
     setRunKey((k) => k + 1);
   };
 
@@ -206,33 +230,36 @@ export function PracticeSession({ trend, mode }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-6">
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <DancerPanel
-            key={runKey}
-            trend={trend}
-            range={range}
-            speed={isFull ? 1 : speed}
-            mirrored={mirrored}
-            videoRef={dancerRef}
-            onLoop={handleLoop}
-            loop={!isFull}
-            autoStart={started}
-          />
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <DancerPanel
+              key={runKey}
+              trend={trend}
+              range={range}
+              speed={isFull ? 1 : speed}
+              mirrored={mirrored}
+              videoRef={dancerRef}
+              onLoop={handleLoop}
+              loop={!isFull}
+              autoStart={started && !countingIn}
+            />
+          </div>
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <LearnerPanel
+              videoRef={webcamRef}
+              canvasRef={learnerCanvasRef}
+              status={webcamStatus}
+              notice={learnerNotice}
+            />
+          </div>
         </div>
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <LearnerPanel
-            videoRef={webcamRef}
-            canvasRef={learnerCanvasRef}
-            status={webcamStatus}
-            notice={learnerNotice}
-          />
-        </div>
+        {countingIn && <CountIn onDone={handleCountInDone} />}
       </div>
 
       {!started && (
         <div className="flex justify-center">
-          <Button size="lg" disabled={!ready} onClick={() => setStarted(true)}>
+          <Button size="lg" disabled={!ready} onClick={handleStart}>
             {ready ? "Start" : "Getting ready…"}
           </Button>
         </div>
@@ -274,7 +301,7 @@ export function PracticeSession({ trend, mode }: Props) {
             ))}
           </ToggleGroup>
           {mirrorToggle}
-          <Button variant="outline" onClick={nextMove}>
+          <Button variant="outline" onClick={skipMove} disabled={countingIn}>
             Skip move
           </Button>
         </div>
