@@ -10,6 +10,10 @@ const TIPS: Record<LimbName, string> = {
   leftShin: "Watch your left leg",
   rightThigh: "Watch your right leg",
   rightShin: "Watch your right leg",
+  leftHand: "Watch your left hand",
+  rightHand: "Watch your right hand",
+  head: "Watch your head",
+  torso: "Watch your torso",
 };
 
 export function tipFor(limbs: LimbScores): string | null {

@@ -11,7 +11,11 @@ export type LimbName =
   | "leftThigh"
   | "leftShin"
   | "rightThigh"
-  | "rightShin";
+  | "rightShin"
+  | "leftHand"
+  | "rightHand"
+  | "head"
+  | "torso";
 export type LimbScores = Partial<Record<LimbName, number>>; // only limbs that were scored
 export type Vec = { x: number; y: number };
 

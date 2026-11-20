@@ -11,12 +11,18 @@ const theta = (t: number) => ((60 * Math.PI) / 180) * Math.sin((2 * Math.PI * t)
 
 function swing(t: number): Pose {
   const a = theta(t);
-  return withPoint(withPoint(standingPose(), 13, 0.57, 0.42), 15, 0.57 + 0.12 * Math.sin(a), 0.42 + 0.12 * Math.cos(a));
+  const wx = 0.57 + 0.12 * Math.sin(a);
+  const wy = 0.42 + 0.12 * Math.cos(a);
+  const arm = withPoint(withPoint(standingPose(), 13, 0.57, 0.42), 15, wx, wy);
+  return withPoint(arm, 19, wx + 0.04 * Math.sin(a), wy + 0.04 * Math.cos(a));
 }
 
 function wrongArm(t: number): Pose {
   const a = theta(t);
-  return withPoint(withPoint(standingPose(), 14, 0.43, 0.42), 16, 0.43 - 0.12 * Math.sin(a), 0.42 + 0.12 * Math.cos(a));
+  const wx = 0.43 - 0.12 * Math.sin(a);
+  const wy = 0.42 + 0.12 * Math.cos(a);
+  const arm = withPoint(withPoint(standingPose(), 14, 0.43, 0.42), 16, wx, wy);
+  return withPoint(arm, 20, wx - 0.04 * Math.sin(a), wy + 0.04 * Math.cos(a));
 }
 
 const frames: PoseFrame[] = Array.from({ length: 6000 / SAMPLE_MS + 1 }, (_, i) => ({

@@ -8,24 +8,24 @@ const SQUARE = { width: 1000, height: 1000 };
 describe("comparePoses", () => {
   test("identical poses score 100 on every limb", () => {
     const r = comparePoses(standingPose(), SQUARE, standingPose(), SQUARE);
-    expect(Object.keys(r.limbs)).toHaveLength(8);
+    expect(Object.keys(r.limbs)).toHaveLength(12);
     expect(r.score).toBeCloseTo(100);
   });
 
-  test("forearm 45° off scores 50, 90° and opposite score 0", () => {
+  test("forearm 45° off scores 25, 90° and opposite score 0", () => {
     const dancer = withPoint(withPoint(standingPose(), 13, 0.5, 0.5), 15, 0.5, 0.6);
     const s = Math.SQRT1_2 * 0.1;
     const diag = withPoint(dancer, 15, 0.5 + s, 0.5 + s);
     const side = withPoint(dancer, 15, 0.6, 0.5);
     const up = withPoint(dancer, 15, 0.5, 0.4);
-    expect(comparePoses(diag, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(50);
+    expect(comparePoses(diag, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(25);
     expect(comparePoses(side, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(0);
     expect(comparePoses(up, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(0);
   });
 
-  test("within 20° scores 100", () => {
+  test("within 15° scores 100", () => {
     const a = { x: 0, y: 1 };
-    const b = { x: Math.sin(Math.PI / 10), y: Math.cos(Math.PI / 10) };
+    const b = { x: Math.sin(Math.PI / 15), y: Math.cos(Math.PI / 15) };
     expect(limbScore(a, b)).toBe(100);
   });
 
@@ -46,11 +46,34 @@ describe("comparePoses", () => {
     for (const i of [25, 26, 27, 28]) legsHidden = withPoint(legsHidden, i, 0.5, 0.9, 0.1);
     const r = comparePoses(legsHidden, SQUARE, standingPose(), SQUARE);
     expect(Object.keys(r.limbs).sort()).toEqual([
+      "head",
       "leftForearm",
+      "leftHand",
       "leftUpperArm",
       "rightForearm",
+      "rightHand",
       "rightUpperArm",
+      "torso",
     ]);
+  });
+
+  test("head goes from the shoulders midpoint to the nose", () => {
+    const up = limbDirection(standingPose(), "head", SQUARE)!;
+    expect(up.x).toBeCloseTo(0);
+    expect(up.y).toBeCloseTo(-1);
+    const tilted = limbDirection(withPoint(standingPose(), 0, 0.6, 0.2), "head", SQUARE)!;
+    expect(tilted.x).toBeCloseTo(Math.SQRT1_2);
+    expect(tilted.y).toBeCloseTo(-Math.SQRT1_2);
+  });
+
+  test("torso goes from the hips midpoint to the shoulders midpoint", () => {
+    const d = limbDirection(standingPose(), "torso", SQUARE)!;
+    expect(d.x).toBeCloseTo(0);
+    expect(d.y).toBeCloseTo(-1);
+  });
+
+  test("a midpoint is hidden when either of its landmarks is hidden", () => {
+    expect(limbDirection(withPoint(standingPose(), 12, 0.45, 0.3, 0.1), "head", SQUARE)).toBeNull();
   });
 
   test("nothing visible gives a null score", () => {
