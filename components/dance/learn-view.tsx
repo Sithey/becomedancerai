@@ -19,7 +19,6 @@ export function LearnView({ trend, canDelete }: { trend: TrendData; canDelete: b
   const [moveIndex, setMoveIndex] = useState(0);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
-  const [showPoseGuide, setShowPoseGuide] = useState(false);
   const progress = useTrendProgress(trend.id);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -41,16 +40,13 @@ export function LearnView({ trend, canDelete }: { trend: TrendData; canDelete: b
             range={trend.moves[moveIndex]}
             speed={speed}
             mirrored={mirrored}
-            showPoseGuide={showPoseGuide}
             videoRef={videoRef}
           />
           <span className="pointer-events-none absolute top-3.5 left-3.5 rounded-full bg-background/80 px-3 py-2 text-[13px] font-semibold">
             {`Move ${moveIndex + 1} of ${trend.moves.length} · looping`}
           </span>
         </div>
-        {showPoseGuide && (
-          <p className="text-[13px] text-muted-foreground">The video is darkened so the moves stand out.</p>
-        )}
+        <p className="text-[13px] text-muted-foreground">Follow the skeleton to learn each move.</p>
       </div>
 
       <div className="flex min-w-0 flex-[999_1_26rem] flex-col gap-6">
@@ -106,9 +102,6 @@ export function LearnView({ trend, canDelete }: { trend: TrendData; canDelete: b
             </ToggleGroup>
             <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
               Mirror
-            </Toggle>
-            <Toggle variant="outline" pressed={showPoseGuide} onPressedChange={setShowPoseGuide}>
-              Pose guide
             </Toggle>
           </div>
         </section>
