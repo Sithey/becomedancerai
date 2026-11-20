@@ -209,6 +209,7 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
+      dancerRef.current?.pause();
     };
   }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
 

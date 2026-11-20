@@ -68,6 +68,20 @@ export function DancerPanel({
 
   useEffect(() => {
     const video = videoRef.current;
+    const onPageHide = () => {
+      video?.pause();
+    };
+    window.addEventListener("pagehide", onPageHide);
+    return () => {
+      window.removeEventListener("pagehide", onPageHide);
+      if (video) {
+        video.pause();
+      }
+    };
+  }, [videoRef]);
+
+  useEffect(() => {
+    const video = videoRef.current;
     if (!video) return;
     video.playbackRate = speed;
   }, [speed, videoRef]);
@@ -131,6 +145,7 @@ export function DancerPanel({
       video.removeEventListener("ended", handleEnd);
       video.removeEventListener("loadedmetadata", onLoadedMetadata);
       video.removeEventListener("error", onError);
+      video.pause();
     };
   }, [trend, start, videoRef]);
 

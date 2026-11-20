@@ -24,6 +24,12 @@ export function LearnView({ trend }: { trend: TrendData }) {
     setProgress(getProgress(trend.id));
   }, [trend.id]);
 
+  useEffect(() => {
+    return () => {
+      videoRef.current?.pause();
+    };
+  }, []);
+
   const handleReset = () => {
     resetProgress(trend.id);
     setProgress(getProgress(trend.id));
