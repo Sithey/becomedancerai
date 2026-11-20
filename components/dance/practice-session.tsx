@@ -117,7 +117,15 @@ export function PracticeSession({ trend, mode }: Props) {
     practicePartRef.current?.scores.push(match.score);
   });
 
+  // A refetch of the page hands a new trend object with the same data: the loop below reads it here and
+  // is keyed on trend.id, so a refetch doesn't close and reload the pose model.
+  const trendRef = useRef(trend);
   useEffect(() => {
+    trendRef.current = trend;
+  });
+
+  useEffect(() => {
+    const trend = trendRef.current;
     let cancelled = false;
     let landmarker: PoseLandmarker | null = null;
     let raf = 0;
@@ -190,7 +198,7 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelAnimationFrame(raf);
       landmarker?.close();
     };
-  }, [webcamRef, trend]);
+  }, [webcamRef, trend.id]);
 
   const startRetry = (index: number) => {
     dancerRef.current?.pause();
