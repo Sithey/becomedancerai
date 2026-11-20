@@ -16,6 +16,7 @@ type Props = {
   loop?: boolean;
   autoStart?: boolean;
   highlightedLimb?: LimbName;
+  showPoseGuide?: boolean;
 };
 
 export function dancerPoseAt(trend: TrendData, timeMs: number) {
@@ -33,6 +34,7 @@ export function DancerPanel({
   loop,
   autoStart = true,
   highlightedLimb,
+  showPoseGuide = true,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [needsPlay, setNeedsPlay] = useState(false);
@@ -42,6 +44,7 @@ export function DancerPanel({
   const loopRef = useRef(loop);
   const speedRef = useRef(speed);
   const highlightRef = useRef(highlightedLimb);
+  const showPoseGuideRef = useRef(showPoseGuide);
   // True from the moment the range end is handled until currentTime is back inside the range,
   // so a seek that hasn't landed yet can't fire onLoop twice.
   const finishedRef = useRef(false);
@@ -52,6 +55,7 @@ export function DancerPanel({
     loopRef.current = loop;
     speedRef.current = speed;
     highlightRef.current = highlightedLimb;
+    showPoseGuideRef.current = showPoseGuide;
   });
 
   const start = useCallback(() => {
@@ -132,7 +136,7 @@ export function DancerPanel({
       const ms = video.currentTime * 1000;
       const limb = highlightRef.current;
       drawSkeleton(ctx, dancerPoseAt(trend, ms), {
-        color,
+        color: showPoseGuideRef.current ? color : "transparent",
         limbColors: limb ? { [limb]: highlight } : undefined,
       });
       if (ms < rangeRef.current.endMs) finishedRef.current = false;
@@ -158,7 +162,11 @@ export function DancerPanel({
         src={trend.videoUrl}
         playsInline
         preload="auto"
-        className={cn("absolute inset-0 size-full object-cover brightness-50", flip)}
+        className={cn(
+          "absolute inset-0 size-full object-cover",
+          (showPoseGuide || highlightedLimb) && "brightness-90",
+          flip,
+        )}
       />
       <canvas
         ref={canvasRef}

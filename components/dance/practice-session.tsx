@@ -45,6 +45,7 @@ export function PracticeSession({ trend, mode }: Props) {
   const [shorterParts, setShorterParts] = useState(false);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
+  const [showPoseGuide, setShowPoseGuide] = useState(false);
   const [result, setResult] = useState<SessionResult | null>(null);
   const [startMs, setStartMs] = useState(0);
   const [retryIndex, setRetryIndex] = useState<number | null>(null);
@@ -109,6 +110,8 @@ export function PracticeSession({ trend, mode }: Props) {
     practicePartRef.current?.scores.push(match.score);
   });
 
+  const guideColor = useEffectEvent((color: string) => showPoseGuide ? color : "transparent");
+
   useEffect(() => {
     let cancelled = false;
     let landmarker: PoseLandmarker | null = null;
@@ -153,7 +156,7 @@ export function PracticeSession({ trend, mode }: Props) {
         history.clear();
       }
 
-      drawLearnerPose(ctx, learner, match?.limbs, { color: primary, matchColor });
+      drawLearnerPose(ctx, learner, match?.limbs, { color: guideColor(primary), matchColor });
 
       if (updateUi) {
         lastUiUpdate = now;
@@ -322,13 +325,16 @@ export function PracticeSession({ trend, mode }: Props) {
               range={range}
               speed={retrying ? 0.5 : normalSpeed}
               mirrored={mirrored}
+              showPoseGuide={showPoseGuide}
               videoRef={dancerRef}
               onLoop={handleFinish}
               loop={false}
               autoStart={started && !countingIn && !showResults}
               highlightedLimb={retrying ? result?.parts[retryIndex].correction?.limb : undefined}
             />
-            <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Follow the bright skeleton.</figcaption>
+            <figcaption className="text-xs text-muted-foreground sm:text-[13px]">
+              {showPoseGuide ? "Follow the bright skeleton." : "Follow the dancer."}
+            </figcaption>
           </figure>
           <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2">
             <LearnerPanel
@@ -386,6 +392,9 @@ export function PracticeSession({ trend, mode }: Props) {
             </>
           )}
           {mirrorToggle}
+          <Toggle variant="outline" pressed={showPoseGuide} onPressedChange={setShowPoseGuide}>
+            Pose guide
+          </Toggle>
           {!isFull && !retrying && (
             <Button variant="outline" onClick={skipMove} disabled={!started || countingIn}>
               Skip move
