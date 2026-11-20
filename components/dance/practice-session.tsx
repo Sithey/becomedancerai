@@ -116,7 +116,15 @@ export function PracticeSession({ trend, mode }: Props) {
     ? replayPart ?? { startMs: resumeAtMs, endMs: trend.durationMs }
     : moves[moveIndex];
 
+  // A refetch of the page hands new trend and part objects with the same data: the loop below reads them
+  // here and is keyed on trend.id, so a refetch doesn't close and reload the pose model.
+  const loopDataRef = useRef({ trend, runParts });
   useEffect(() => {
+    loopDataRef.current = { trend, runParts };
+  });
+
+  useEffect(() => {
+    const { trend, runParts } = loopDataRef.current;
     let cancelled = false;
     let landmarker: PoseLandmarker | null = null;
     let raf = 0;
@@ -219,7 +227,7 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelAnimationFrame(raf);
       landmarker?.close();
     };
-  }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
+  }, [webcamRef, trend.id, isFull, pauseIfNeeded, getCoaching]);
 
   const finish = (allPassed: boolean) => {
     setDone(true);

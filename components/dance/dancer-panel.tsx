@@ -38,6 +38,9 @@ export function DancerPanel({
   const [needsPlay, setNeedsPlay] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
   const onLoopRef = useRef(onLoop);
+  // A refetch of the page (same URL, or coming back to it) hands a new trend object with the same data:
+  // keyed on trend.id, the effect below doesn't pause the dancer for it.
+  const trendRef = useRef(trend);
   const rangeRef = useRef(range);
   const loopRef = useRef(loop);
   const speedRef = useRef(speed);
@@ -47,6 +50,7 @@ export function DancerPanel({
   const finishedRef = useRef(false);
 
   useEffect(() => {
+    trendRef.current = trend;
     onLoopRef.current = onLoop;
     rangeRef.current = range;
     loopRef.current = loop;
@@ -131,7 +135,7 @@ export function DancerPanel({
     let raf = requestAnimationFrame(function frame() {
       const ms = video.currentTime * 1000;
       const limb = highlightRef.current;
-      drawSkeleton(ctx, dancerPoseAt(trend, ms), {
+      drawSkeleton(ctx, dancerPoseAt(trendRef.current, ms), {
         color,
         limbColors: limb ? { [limb]: highlight } : undefined,
       });
@@ -147,7 +151,7 @@ export function DancerPanel({
       video.removeEventListener("error", onError);
       video.pause();
     };
-  }, [trend, start, videoRef]);
+  }, [trend.id, start, videoRef]);
 
   const flip = mirrored && "-scale-x-100";
 
