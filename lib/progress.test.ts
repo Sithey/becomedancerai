@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   getProgress,
+  parseProgress,
+  readProgressRaw,
   resetProgress,
   saveLastPracticedMove,
   saveMoveScore,
   saveRunScore,
+  subscribeProgress,
 } from "./progress";
 
 describe("progress", () => {
@@ -102,5 +105,25 @@ describe("progress", () => {
       firstRunScore: null,
       bestRunScore: null,
     });
+  });
+
+  it("notifies subscribers when progress is saved or reset", () => {
+    const seen: number[] = [];
+    const unsubscribe = subscribeProgress(() => seen.push(1));
+    saveMoveScore("trend-1", 0, 90);
+    saveRunScore("trend-1", 80);
+    saveLastPracticedMove("trend-1", 2);
+    resetProgress("trend-1");
+    expect(seen).toHaveLength(4);
+    unsubscribe();
+    saveRunScore("trend-1", 70);
+    expect(seen).toHaveLength(4);
+  });
+
+  it("reads the raw value and parses it like getProgress", () => {
+    expect(readProgressRaw("trend-1")).toBeNull();
+    saveRunScore("trend-1", 77);
+    expect(parseProgress(readProgressRaw("trend-1")).bestRunScore).toBe(77);
+    expect(parseProgress(null)).toEqual(getProgress("nothing-saved"));
   });
 });

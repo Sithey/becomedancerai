@@ -52,13 +52,7 @@ export function PracticeSession({ trend, mode }: Props) {
   // The dancer waits for the camera and the model, or the start of move 1 isn't scored.
   const [started, setStarted] = useState(false);
 
-  const [moveIndex, setMoveIndex] = useState(() => {
-    if (mode === "moves" && typeof window !== "undefined") {
-      const p = getProgress(trend.id);
-      return Math.min(trend.moves.length - 1, Math.max(0, p.lastMovePracticed));
-    }
-    return 0;
-  });
+  const [moveIndex, setMoveIndex] = useState(0);
   const [completedParts, setCompletedParts] = useState<Move[]>([]);
   const [shorterParts, setShorterParts] = useState(false);
   const [done, setDone] = useState(false);
@@ -214,7 +208,6 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
-      dancerRef.current?.pause();
     };
   }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
 
@@ -251,6 +244,11 @@ export function PracticeSession({ trend, mode }: Props) {
   };
 
   const handleStart = () => {
+    // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
+    if (!isFull) {
+      const last = getProgress(trend.id).lastMovePracticed;
+      if (last > 0) setMoveIndex(Math.min(moves.length - 1, last));
+    }
     setStarted(true);
     setCountingIn(true);
   };

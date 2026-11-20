@@ -26,12 +26,35 @@ function getStorage(): Storage | null {
   return null;
 }
 
-export function getProgress(trendId: string): TrendProgress {
+const listeners = new Set<() => void>();
+
+function notify() {
+  for (const listener of listeners) listener();
+}
+
+// For useSyncExternalStore: React re-reads the progress after a save, a reset or a change in another tab.
+export function subscribeProgress(onChange: () => void): () => void {
+  listeners.add(onChange);
+  if (typeof window !== "undefined") window.addEventListener("storage", onChange);
+  return () => {
+    listeners.delete(onChange);
+    if (typeof window !== "undefined") window.removeEventListener("storage", onChange);
+  };
+}
+
+export function readProgressRaw(trendId: string): string | null {
   const storage = getStorage();
-  if (!storage) return { ...DEFAULT_PROGRESS };
+  if (!storage) return null;
   try {
-    const raw = storage.getItem(storageKey(trendId));
-    if (!raw) return { ...DEFAULT_PROGRESS };
+    return storage.getItem(storageKey(trendId));
+  } catch {
+    return null;
+  }
+}
+
+export function parseProgress(raw: string | null): TrendProgress {
+  if (!raw) return { ...DEFAULT_PROGRESS };
+  try {
     const parsed = JSON.parse(raw);
     return {
       lastMovePracticed:
@@ -48,6 +71,10 @@ export function getProgress(trendId: string): TrendProgress {
   }
 }
 
+export function getProgress(trendId: string): TrendProgress {
+  return parseProgress(readProgressRaw(trendId));
+}
+
 function saveProgress(trendId: string, progress: TrendProgress): void {
   const storage = getStorage();
   if (!storage) return;
@@ -56,6 +83,7 @@ function saveProgress(trendId: string, progress: TrendProgress): void {
   } catch {
     // Ignore storage errors (quota, disabled, etc.)
   }
+  notify();
 }
 
 export function saveMoveScore(trendId: string, moveIndex: number, score: number): TrendProgress {
@@ -105,4 +133,5 @@ export function resetProgress(trendId: string): void {
   } catch {
     // Ignore storage errors
   }
+  notify();
 }

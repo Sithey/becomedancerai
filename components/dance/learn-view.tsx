@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { DancerPanel } from "@/components/dance/dancer-panel";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { getProgress, resetProgress, type TrendProgress } from "@/lib/progress";
+import { useTrendProgress } from "@/components/dance/use-trend-progress";
+import { resetProgress } from "@/lib/progress";
 import type { TrendData } from "@/lib/pose/types";
 import { cn } from "cn";
 
@@ -16,24 +17,15 @@ export function LearnView({ trend }: { trend: TrendData }) {
   const [moveIndex, setMoveIndex] = useState(0);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
-  const [progress, setProgress] = useState<TrendProgress | null>(null);
+  const progress = useTrendProgress(trend.id);
   const [confirmingReset, setConfirmingReset] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastIndex = trend.moves.length - 1;
-
-  useEffect(() => {
-    setProgress(getProgress(trend.id));
-  }, [trend.id]);
-
-  useEffect(() => {
-    return () => {
-      videoRef.current?.pause();
-    };
-  }, []);
+  const hasProgress =
+    progress.bestRunScore !== null || progress.lastMovePracticed > 0 || Object.keys(progress.moveScores).length > 0;
 
   const handleReset = () => {
     resetProgress(trend.id);
-    setProgress(getProgress(trend.id));
     setConfirmingReset(false);
   };
 
@@ -144,31 +136,42 @@ export function LearnView({ trend }: { trend: TrendData }) {
             </Link>
           </div>
         </section>
-      </div>
-      <div className="flex flex-col items-center gap-2 pt-2">
-        <span className="text-sm font-medium text-muted-foreground">
-          {`Best full run: ${progress?.bestRunScore !== null && progress?.bestRunScore !== undefined ? progress.bestRunScore : "–"}`}
-        </span>
-        {!confirmingReset ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive"
-            onClick={() => setConfirmingReset(true)}
-          >
-            Reset progress
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Reset all progress?</span>
-            <Button variant="destructive" size="sm" onClick={handleReset}>
-              Confirm
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => setConfirmingReset(false)}>
-              Cancel
-            </Button>
+
+        <section
+          aria-labelledby="progress-title"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-card p-6"
+        >
+          <div className="flex flex-col gap-1">
+            <h2 id="progress-title" className="font-heading text-xl font-semibold">
+              Your progress
+            </h2>
+            <span className="text-muted-foreground">
+              {progress.bestRunScore === null
+                ? "No full run yet."
+                : `Best full run: ${progress.bestRunScore}${
+                    progress.firstRunScore !== null && progress.firstRunScore !== progress.bestRunScore
+                      ? ` · first try ${progress.firstRunScore}`
+                      : ""
+                  }`}
+            </span>
           </div>
-        )}
+          {hasProgress &&
+            (confirmingReset ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-muted-foreground">Reset all progress?</span>
+                <Button variant="destructive" onClick={handleReset}>
+                  Reset
+                </Button>
+                <Button variant="outline" onClick={() => setConfirmingReset(false)}>
+                  Cancel
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" className="rounded-full" onClick={() => setConfirmingReset(true)}>
+                Reset progress
+              </Button>
+            ))}
+        </section>
       </div>
     </div>
   );
