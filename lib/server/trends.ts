@@ -1,8 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
+import { readFile, writeFile } from "node:fs/promises";
+import { Prisma } from "@/generated/prisma/client";
 import type { Move, NewTrend, PoseFrame, TrendData, TrendSummary } from "@/lib/pose/types";
 import { db } from "./db";
-import { deleteVideo, saveVideo, videoFilePath } from "./videos";
+import { deleteVideo, isValidVideoFileName, saveVideo, videoFilePath } from "./videos";
 
 function videoUrl(videoFile: string) {
   return `/api/videos/${videoFile}`;
@@ -66,8 +68,29 @@ export async function createTrend(input: NewTrend, video: File): Promise<{ id: s
       },
     });
   } catch (error) {
-    await deleteVideo(videoFile);
+    await deleteVideo(videoFile).catch(() => {});
     throw error;
   }
   return { id };
+}
+
+export async function deleteTrend(id: string): Promise<boolean> {
+  let restoreVideo: (() => Promise<void>) | undefined;
+  try {
+    await db.$transaction(async (tx) => {
+      const { videoFile } = await tx.trend.delete({ where: { id }, select: { videoFile: true } });
+      if (!isValidVideoFileName(videoFile)) throw new Error("Invalid video filename");
+
+      // Keep a copy until the row deletion commits. A file error must roll back the row.
+      const path = videoFilePath(videoFile);
+      const contents = await readFile(path);
+      await deleteVideo(videoFile);
+      restoreVideo = () => writeFile(path, contents, { flag: "wx" });
+    });
+    return true;
+  } catch (error) {
+    await restoreVideo?.();
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2025") return false;
+    throw error;
+  }
 }

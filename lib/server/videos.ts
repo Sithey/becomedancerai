@@ -20,5 +20,6 @@ export async function saveVideo(fileName: string, file: File) {
 }
 
 export async function deleteVideo(fileName: string) {
-  await unlink(videoFilePath(fileName)).catch(() => {});
+  if (!isValidVideoFileName(fileName)) throw new Error("Invalid video filename");
+  await unlink(videoFilePath(fileName));
 }
