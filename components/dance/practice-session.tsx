@@ -1,22 +1,18 @@
 "use client";
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
-import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { CoachingTip } from "@/components/dance/coaching-tip";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
 import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { MoveTimeline } from "@/components/dance/move-timeline";
-import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
+import { fullRunParts, shorterPracticeParts } from "@/components/dance/practice-parts";
 import { RunResult } from "@/components/dance/run-result";
-import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { comparePoses } from "@/lib/pose/compare";
 import { themeColor } from "@/lib/pose/draw";
 import { FRAMED, framingState, sameFraming, type Framing } from "@/lib/pose/framing-state";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
@@ -24,7 +20,7 @@ import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, isPassed } from "@/lib/pose/scoring";
 import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
-import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
+import type { FrameSize, Pose, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
 import {
   getProgress,
@@ -34,93 +30,37 @@ import {
   saveRunScore,
   type PracticeList,
 } from "@/lib/progress";
-import { cn } from "cn";
+import { applyPartRetry, moveIndexAt, summarizeAttempt, type RecordedScore, type SessionResult } from "@/lib/result-summary";
 
 const SPEEDS = [0.5, 0.75, 1];
 const UI_UPDATE_MS = 250;
 
 type Props = { trend: TrendData; mode: "moves" | "full" };
-type FullRunResult = { final: number | null; parts: (number | null)[] };
-
-function moveIndexAt(moves: Move[], tMs: number): number {
-  const last = moves.length - 1;
-  return moves.findIndex(
-    (m, i) => tMs >= m.startMs && (tMs < m.endMs || (i === last && tMs <= m.endMs)),
-  );
-}
-
-const roundScore = (avg: number | null) => (avg === null ? null : Math.round(avg));
 
 export function PracticeSession({ trend, mode }: Props) {
   const isFull = mode === "full";
   const { videoRef: webcamRef, status: webcamStatus } = useWebcam();
   const dancerRef = useRef<HTMLVideoElement>(null);
   const learnerCanvasRef = useRef<HTMLCanvasElement>(null);
+  const playerRef = useRef<HTMLDivElement>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
   const [modelStatus, setModelStatus] = useState<"loading" | "ready" | "error">("loading");
   // The dancer waits for the camera and the model, or the start of move 1 isn't scored.
   const [started, setStarted] = useState(false);
 
-  const [moveIndex, setMoveIndex] = useState(0);
-  const [completedParts, setCompletedParts] = useState<Move[]>([]);
+  const [liveMove, setLiveMove] = useState(0);
   const [shorterParts, setShorterParts] = useState(false);
-  const [done, setDone] = useState(false);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
-  const [runKey, setRunKey] = useState(0);
-  const [result, setResult] = useState<FullRunResult | null>(null);
-  const [resumeAtMs, setResumeAtMs] = useState(0);
+  const [result, setResult] = useState<SessionResult | null>(null);
+  const [startMs, setStartMs] = useState(0);
+  const [retryIndex, setRetryIndex] = useState<number | null>(null);
+  const [retryScore, setRetryScore] = useState<{ index: number; score: number | null } | null>(null);
   const [showConfetti, setShowConfetti] = useState(false);
-
-  const [liveMove, setLiveMove] = useState(0);
-  const [showNice, setShowNice] = useState(false);
   const [countingIn, setCountingIn] = useState(false);
   const [framing, setFraming] = useState<Framing>(FRAMED);
-
-  // Practice tracks one loop. Full Run keeps each part's scores across retries.
-  const scoresRef = useRef<number[]>([]);
-  const bucketsRef = useRef<number[][]>([]);
-  const advanceTimer = useRef<number | null>(null);
-
-  const cancelAdvance = useCallback(() => {
-    if (advanceTimer.current === null) return;
-    window.clearTimeout(advanceTimer.current);
-    advanceTimer.current = null;
-  }, []);
-
-  useEffect(() => cancelAdvance, [cancelAdvance]);
-
-  const replayAttempt = useCallback((partIndex?: number) => {
-    scoresRef.current = [];
-    if (partIndex === undefined) {
-      bucketsRef.current = [];
-    } else {
-      bucketsRef.current[partIndex] = [];
-    }
-    setRunKey((k) => k + 1);
-  }, []);
-  const { coaching, pauseIfNeeded, replay, clearCoaching, getCoaching } = useCoachingReplay(replayAttempt);
-
-  // Back to the Start button, without writing progress: leaving the page keeps the move to resume.
-  const resetSession = useCallback(() => {
-    cancelAdvance();
-    clearCoaching();
-    scoresRef.current = [];
-    bucketsRef.current = [];
-    setShowNice(false);
-    setCompletedParts([]);
-    setMoveIndex(0);
-    setLiveMove(0);
-    setResumeAtMs(0);
-    setDone(false);
-    setResult(null);
-    setStarted(false);
-    setCountingIn(false);
-    setShowConfetti(false);
-  }, [cancelAdvance, clearCoaching]);
-
-  // Next keeps a left page hidden (Activity) and re-runs its effects on return: without this reset the
-  // dancer starts again on its own, with no count-in, mid-session or behind the finished panel.
-  useLayoutEffect(() => resetSession, [resetSession]);
+  const framesRef = useRef<RecordedScore[]>([]);
+  const practicePartRef = useRef<{ index: number; scores: number[] } | null>(null);
 
   const runParts = useMemo(
     () => fullRunParts(trend.moves, trend.durationMs),
@@ -129,23 +69,55 @@ export function PracticeSession({ trend, mode }: Props) {
   const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
   const moves = isFull ? runParts : shorterParts ? shortMoves : trend.moves;
   const list: PracticeList = shorterParts ? "parts" : "moves";
-  const passed = useMemo(() => moves.map((move) => isPartPassed(move, completedParts)), [moves, completedParts]);
-  const replayPart = coaching?.phase === "replay" && coaching.partIndex !== undefined
-    ? runParts[coaching.partIndex]
-    : null;
-  const range = isFull
-    ? replayPart ?? { startMs: resumeAtMs, endMs: trend.durationMs }
-    : moves[moveIndex];
+  const retrying = retryIndex !== null;
+  const showResults = result !== null && !retrying;
+  const range = retrying ? moves[retryIndex] : { startMs, endMs: trend.durationMs };
 
-  // A refetch of the page hands new trend and part objects with the same data: the loop below reads them
-  // here and is keyed on trend.id, so a refetch doesn't close and reload the pose model.
-  const loopDataRef = useRef({ trend, runParts });
   useEffect(() => {
-    loopDataRef.current = { trend, runParts };
+    if (retrying) playerRef.current?.focus();
+    if (showResults) resultsRef.current?.focus();
+  }, [retrying, showResults]);
+
+  const savePracticePart = () => {
+    const part = practicePartRef.current;
+    const average = part ? averageScore(part.scores) : null;
+    if (part && average !== null) saveMoveScore(trend.id, part.index, Math.round(average), list);
+  };
+
+  const recordFrame = useEffectEvent((
+    timeMs: number,
+    match: SegmentScore | null,
+    learner: Pose | null,
+    learnerSize: FrameSize,
+    dancerSize: FrameSize,
+    updateUi: boolean,
+  ) => {
+    if (!started || countingIn || showResults || timeMs < range.startMs || timeMs > range.endMs) return;
+    const index = moveIndexAt(moves, timeMs);
+    if (index === -1 || (retrying && index !== retryIndex)) return;
+    if (index !== liveMove) setLiveMove(index);
+
+    if (!isFull && !retrying && practicePartRef.current?.index !== index) {
+      savePracticePart();
+      saveLastPracticedMove(trend.id, index, list);
+      practicePartRef.current = { index, scores: [] };
+    }
+    if (!match || !learner) return;
+
+    const frame: RecordedScore = { timeMs, score: match.score };
+    if (updateUi && !isPassed(match.score)) {
+      const reference = dancerPoseAt(trend, timeMs - match.lagMs);
+      if (reference) {
+        frame.correction = correctionFor(
+          match.limbs, limbDirections(learner, learnerSize), limbDirections(reference, dancerSize),
+        ) ?? undefined;
+      }
+    }
+    framesRef.current.push(frame);
+    practicePartRef.current?.scores.push(match.score);
   });
 
   useEffect(() => {
-    const { trend, runParts } = loopDataRef.current;
     let cancelled = false;
     let landmarker: PoseLandmarker | null = null;
     let raf = 0;
@@ -168,6 +140,7 @@ export function PracticeSession({ trend, mode }: Props) {
       lastWebcamTime = webcam.currentTime;
 
       const now = performance.now();
+      const updateUi = now - lastUiUpdate >= UI_UPDATE_MS;
       // The raw webcam frame goes to the model (mirroring is CSS only), so its left/right stay anatomical.
       const landmarks = landmarker.detectForVideo(webcam, now).landmarks[0];
       const learner = landmarks ? fromMediaPipe(landmarks) : null;
@@ -176,55 +149,24 @@ export function PracticeSession({ trend, mode }: Props) {
 
       const dancer = dancerRef.current;
       let match: SegmentScore | null = null;
-      let reviewScores: LimbScores | undefined;
-      let partIndex = -1;
-      if (dancer && !dancer.seeking && dancer.readyState >= 2) {
+      if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
-        const currentCoaching = getCoaching();
-        if (isFull) partIndex = moveIndexAt(runParts, tMs);
-        if (!dancer.paused) {
-          // No learner pose this frame: skip scoring, so the last segment isn't credited again.
-          if (learner) {
-            history.push({ t: tMs, pose: learner });
-            match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
-          }
-          if (match) {
-            if (!isFull) {
-              scoresRef.current.push(match.score);
-            } else if (partIndex !== -1 && (
-              currentCoaching?.phase !== "replay" || currentCoaching.partIndex === partIndex
-            )) {
-              (bucketsRef.current[partIndex] ??= []).push(match.score);
-            }
-          }
-        } else {
-          history.clear();
-          if (learner && currentCoaching?.phase === "review") {
-            const frozenPose = dancerPoseAt(trend, tMs);
-            if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
-          }
+        // A missing pose must not credit the most recent score again.
+        if (learner) {
+          history.push({ t: tMs, pose: learner });
+          match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
         }
+        recordFrame(tMs, match, learner, learnerSize, dancerSize, updateUi);
       } else {
         history.clear();
       }
 
-      drawLearnerPose(ctx, learner, match?.limbs ?? reviewScores, { color: primary, matchColor });
+      drawLearnerPose(ctx, learner, match?.limbs, { color: primary, matchColor });
 
-      if (now - lastUiUpdate >= UI_UPDATE_MS) {
+      if (updateUi) {
         lastUiUpdate = now;
         const nextFraming = framingState(learner, now - lastSeen);
         setFraming((prev) => (sameFraming(prev, nextFraming) ? prev : nextFraming));
-        if (dancer && learner && match && (!isFull || partIndex !== -1)) {
-          const { score, lagMs, limbs } = match;
-          pauseIfNeeded(dancer, score, () => {
-            // The dancer pose the learner was matched against: the segment's offset, not the current frame.
-            const dancerPose = dancerPoseAt(trend, dancer.currentTime * 1000 - lagMs);
-            return dancerPose
-              ? correctionFor(limbs, limbDirections(learner, learnerSize), limbDirections(dancerPose, dancerSize))
-              : null;
-          }, isFull ? partIndex : undefined);
-        }
-        if (partIndex !== -1) setLiveMove(partIndex);
       }
     };
 
@@ -247,54 +189,31 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
-      // The model is loaded again when the page is shown again: Start waits for it.
-      setModelStatus("loading");
     };
-  }, [webcamRef, trend.id, isFull, pauseIfNeeded, getCoaching]);
+  }, [webcamRef, trend]);
 
-  const finish = (allPassed: boolean) => {
-    setDone(true);
+  const startRetry = (index: number) => {
     dancerRef.current?.pause();
-    // The last loop saved the last move: the next visit starts from move 1 again.
-    saveLastPracticedMove(trend.id, 0, list);
-    if (allPassed) setShowConfetti(true);
-  };
-
-  const clearPassedPrompt = () => {
-    cancelAdvance();
-    setShowNice(false);
-  };
-
-  const nextMove = (passedCurrent = false) => {
-    clearPassedPrompt();
-    clearCoaching();
-    scoresRef.current = [];
-    if (moveIndex === moves.length - 1) {
-      finish(passed.every((didPass, i) => didPass || (passedCurrent && i === moveIndex)));
-    } else {
-      const nextIndex = moveIndex + 1;
-      setMoveIndex(nextIndex);
-      if (!isFull) {
-        saveLastPracticedMove(trend.id, nextIndex, list);
-      }
-      setCountingIn(started);
-    }
-  };
-
-  const skipMove = () => {
-    dancerRef.current?.pause();
-    nextMove();
+    framesRef.current = [];
+    practicePartRef.current = null;
+    setLiveMove(index);
+    setRetryIndex(index);
+    setRetryScore(null);
+    setShowConfetti(false);
+    setCountingIn(true);
   };
 
   const selectMove = (index: number) => {
-    if (!done && index === moveIndex) return;
+    if (retrying) return;
+    if (showResults) {
+      startRetry(index);
+      return;
+    }
+    if (index === liveMove) return;
     dancerRef.current?.pause();
-    clearPassedPrompt();
-    clearCoaching();
-    scoresRef.current = [];
-    setDone(false);
-    setShowConfetti(false);
-    setMoveIndex(index);
+    practicePartRef.current = null;
+    setLiveMove(index);
+    setStartMs(moves[index].startMs);
     saveLastPracticedMove(trend.id, index, list);
     setCountingIn(started);
   };
@@ -302,71 +221,71 @@ export function PracticeSession({ trend, mode }: Props) {
   const handleStart = () => {
     // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
     if (!isFull) {
-      const resumeAt = resumeMoveIndex(getProgress(trend.id), list, moves.length);
-      if (resumeAt > 0) setMoveIndex(resumeAt);
+      const index = resumeMoveIndex(getProgress(trend.id), list, moves.length);
+      setLiveMove(index);
+      setStartMs(moves[index]?.startMs ?? 0);
     }
     setStarted(true);
     setCountingIn(true);
   };
 
   const handleCountInDone = useCallback(() => {
-    scoresRef.current = [];
     setCountingIn(false);
   }, []);
 
-  const handleLoop = () => {
-    if (result) return;
-    clearCoaching();
-    if (isFull) {
-      if (replayPart && replayPart.endMs < trend.durationMs) {
-        setResumeAtMs(replayPart.endMs);
-        return;
-      }
-      setResumeAtMs(trend.durationMs);
-      const finalScore = roundScore(averageScore(bucketsRef.current.flat()));
-      if (finalScore !== null) {
-        saveRunScore(trend.id, finalScore);
-      }
-      setResult({
-        final: finalScore,
-        parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
-      });
-      setShowConfetti(true);
+  const handleFinish = () => {
+    if (!started || countingIn || showResults) return;
+    if (retryIndex !== null && result) {
+      const [attempt] = summarizeAttempt([moves[retryIndex]], framesRef.current).parts;
+      if (!isFull && attempt.score !== null) saveMoveScore(trend.id, retryIndex, attempt.score, list);
+      setResult(applyPartRetry(result, retryIndex, attempt));
+      setRetryScore({ index: retryIndex, score: attempt.score });
+      setRetryIndex(null);
       return;
     }
-    const loopScore = roundScore(averageScore(scoresRef.current));
-    if (loopScore !== null) {
-      saveMoveScore(trend.id, moveIndex, loopScore, list);
+
+    const nextResult = summarizeAttempt(moves, framesRef.current);
+    if (isFull && nextResult.final !== null) saveRunScore(trend.id, nextResult.final);
+    if (!isFull) savePracticePart();
+    practicePartRef.current = null;
+    setResult(nextResult);
+    setShowConfetti(nextResult.parts.length > 0 && nextResult.parts.every(({ score }) => isPassed(score)));
+  };
+
+  const skipMove = () => {
+    if (liveMove < moves.length - 1) {
+      selectMove(liveMove + 1);
+    } else {
+      dancerRef.current?.pause();
+      handleFinish();
     }
-    const loopPassed = isPassed(averageScore(scoresRef.current));
-    scoresRef.current = [];
-    if (!loopPassed || advanceTimer.current !== null) return;
-    setCompletedParts((parts) =>
-      isPartPassed(range, parts) ? parts : [...parts, range].sort((a, b) => a.startMs - b.startMs),
-    );
-    dancerRef.current?.pause();
-    setShowNice(true);
-    advanceTimer.current = window.setTimeout(() => nextMove(true), 1000);
   };
 
   const restart = () => {
     dancerRef.current?.pause();
-    resetSession();
-    if (!isFull) {
-      saveLastPracticedMove(trend.id, 0, list);
-    }
-    replayAttempt();
+    framesRef.current = [];
+    practicePartRef.current = null;
+    if (!isFull) saveLastPracticedMove(trend.id, 0, list);
+    setLiveMove(0);
+    setStartMs(0);
+    setResult(null);
+    setRetryIndex(null);
+    setRetryScore(null);
+    setStarted(false);
+    setCountingIn(false);
+    setShowConfetti(false);
   };
 
   const changePartLength = (useShorterParts: boolean) => {
     const nextMoves = useShorterParts ? shortMoves : trend.moves;
-    dancerRef.current?.pause();
-    clearPassedPrompt();
-    clearCoaching();
+    const timeMs = started ? (dancerRef.current?.currentTime ?? 0) * 1000 : startMs;
+    const index = Math.max(0, moveIndexAt(nextMoves, timeMs));
+    savePracticePart();
+    practicePartRef.current = null;
     setShorterParts(useShorterParts);
-    setMoveIndex(Math.max(0, moveIndexAt(nextMoves, range.startMs)));
-    setCountingIn(started);
-    replayAttempt();
+    setLiveMove(index);
+    saveLastPracticedMove(trend.id, index, useShorterParts ? "parts" : "moves");
+    if (!started) setStartMs(nextMoves[index]?.startMs ?? 0);
   };
 
   const learnerNotice =
@@ -376,9 +295,7 @@ export function PracticeSession({ trend, mode }: Props) {
         ? "Couldn't load the pose model. Reload the page to try again."
         : null;
   const ready = webcamStatus === "ready" && modelStatus === "ready";
-  const shownMove = isFull ? liveMove : moveIndex;
   const normalSpeed = isFull ? 1 : speed;
-  const replaySpeed = normalSpeed <= 0.5 ? normalSpeed / 2 : 0.5;
   const mirrorToggle = (
     <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
       Mirror
@@ -387,15 +304,17 @@ export function PracticeSession({ trend, mode }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
+      <div ref={playerRef} tabIndex={-1} className="flex flex-wrap items-center justify-between gap-4">
         <span className="text-muted-foreground">
-          {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
+          {retrying
+            ? `Retrying ${isFull ? "part" : "move"} ${retryIndex + 1} at 0.5×`
+            : `${isFull ? "Part" : "Move"} ${liveMove + 1} of ${moves.length}`}
         </span>
-        {!isFull && (
+        {!isFull && !retrying && (
           <MoveTimeline
             count={moves.length}
-            current={done ? -1 : moveIndex}
-            passed={passed}
+            current={showResults ? -1 : liveMove}
+            passed={result?.parts.map(({ score }) => isPassed(score))}
             onSelect={selectMove}
           />
         )}
@@ -406,16 +325,15 @@ export function PracticeSession({ trend, mode }: Props) {
         <div className="grid grid-cols-2 gap-3 sm:gap-6">
           <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2">
             <DancerPanel
-              key={runKey}
               trend={trend}
               range={range}
-              speed={coaching?.phase === "replay" ? replaySpeed : normalSpeed}
+              speed={retrying ? 0.5 : normalSpeed}
               mirrored={mirrored}
               videoRef={dancerRef}
-              onLoop={handleLoop}
-              loop={!isFull}
-              autoStart={started && !countingIn && !result && !done}
-              highlightedLimb={coaching?.limb}
+              onLoop={handleFinish}
+              loop={false}
+              autoStart={started && !countingIn && !showResults}
+              highlightedLimb={retrying ? result?.parts[retryIndex].correction?.limb : undefined}
             />
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Follow the bright skeleton.</figcaption>
           </figure>
@@ -430,9 +348,9 @@ export function PracticeSession({ trend, mode }: Props) {
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>
         </div>
-        {countingIn && <CountIn key={moveIndex} onDone={handleCountInDone} />}
+        {countingIn && <CountIn key={liveMove} onDone={handleCountInDone} />}
         {/* Over the panels, not below them: on a 900 px laptop screen a button under the panels is off screen. */}
-        {!started && !done && (
+        {!started && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
             <Button
               size="lg"
@@ -446,13 +364,9 @@ export function PracticeSession({ trend, mode }: Props) {
         )}
       </div>
 
-      <div className="flex flex-col items-stretch gap-3 rounded-[1.25rem] border border-border bg-card px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:px-5">
-        <div role="status" className="min-h-8 font-heading text-2xl font-bold text-primary">
-          {showNice ? "Nice!" : null}
-        </div>
-        {/* Touch-sized controls on phones (44 px), compact from sm up. */}
-        <div className="flex flex-wrap items-center gap-2.5 [&_button]:min-h-11 sm:[&_button]:min-h-0">
-          {!isFull && !done && (
+      {!showResults && (
+        <div className="flex flex-wrap items-center gap-2.5 rounded-[1.25rem] border border-border bg-card px-4 py-4 sm:px-5 [&_button]:min-h-11 sm:[&_button]:min-h-0">
+          {!isFull && !retrying && (
             <>
               <ToggleGroup
                 aria-label="Speed"
@@ -478,42 +392,29 @@ export function PracticeSession({ trend, mode }: Props) {
               )}
             </>
           )}
-          {(!isFull ? !done : !result) && mirrorToggle}
-          {!isFull && !done && (
-            <Button variant="outline" onClick={skipMove} disabled={countingIn}>
+          {mirrorToggle}
+          {!isFull && !retrying && (
+            <Button variant="outline" onClick={skipMove} disabled={!started || countingIn}>
               Skip move
             </Button>
           )}
-          <Button variant="outline" disabled={!started && moveIndex === 0 && !done} onClick={restart}>
+          <Button variant="outline" disabled={!started && liveMove === 0} onClick={restart}>
             Reset
           </Button>
         </div>
-      </div>
-      <CoachingTip coaching={coaching} replaySpeed={replaySpeed} onReplay={replay} />
-
-      {!isFull && done && (
-        <div className="flex flex-col items-center gap-4 rounded-[1.25rem] border border-border bg-muted p-8 text-center">
-          <p className="font-heading text-2xl font-semibold">
-            {passed.every(Boolean) ? "All moves passed!" : "Now do the full dance"}
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            <Link href={`/trends/${trend.id}/run`} className={cn(buttonVariants(), "h-12 rounded-full px-6")}>
-              Full run
-            </Link>
-            <Button variant="outline" className="h-12 rounded-full px-6" onClick={restart}>
-              Practice again
-            </Button>
-          </div>
-        </div>
       )}
 
-      {isFull && result && (
-        <RunResult
-          trendId={trend.id}
-          final={result.final}
-          parts={result.parts}
-          onRestart={restart}
-        />
+      {showResults && (
+        <div ref={resultsRef} tabIndex={-1}>
+          <RunResult
+            trendId={trend.id}
+            mode={mode}
+            result={result}
+            retryScore={retryScore}
+            onRestart={restart}
+            onRetry={startRetry}
+          />
+        </div>
       )}
 
       {showConfetti && <Confetti />}
