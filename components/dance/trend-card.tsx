@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DeleteTrendButton } from "@/components/dance/delete-trend-button";
 import type { TrendSummary } from "@/lib/pose/types";
 
 export function formatDuration(ms: number) {
@@ -8,32 +9,34 @@ export function formatDuration(ms: number) {
 
 export function TrendCard({ trend }: { trend: TrendSummary }) {
   return (
-    <Link
-      href={`/trends/${trend.id}`}
-      className="group flex flex-col gap-3.5 rounded-[1.25rem] border border-border bg-card p-3 pb-4 transition-colors hover:border-primary/60"
-    >
-      <div className="relative aspect-[4/5] overflow-hidden rounded-[0.875rem] bg-muted">
-        {/* #t=0.5 makes the browser show a frame from half a second in as the thumbnail. */}
-        <video
-          src={`${trend.videoUrl}#t=0.5`}
-          preload="metadata"
-          muted
-          playsInline
-          aria-hidden="true"
-          tabIndex={-1}
-          className="size-full object-cover brightness-50 transition duration-300 group-hover:brightness-75"
-        />
-        <span className="absolute bottom-2.5 left-2.5 rounded-full bg-background/80 px-2.5 py-1.5 text-xs font-semibold">
-          {formatDuration(trend.durationMs)}
-        </span>
+    <article className="flex flex-col gap-3.5 rounded-[1.25rem] border border-border bg-card p-3 pb-4 transition-colors hover:border-primary/60">
+      <Link href={`/trends/${trend.id}`} className="group flex flex-1 flex-col gap-3.5 rounded-[0.875rem]">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-[0.875rem] bg-muted">
+          {/* #t=0.5 makes the browser show a frame from half a second in as the thumbnail. */}
+          <video
+            src={`${trend.videoUrl}#t=0.5`}
+            preload="metadata"
+            muted
+            playsInline
+            aria-hidden="true"
+            tabIndex={-1}
+            className="size-full object-cover brightness-50 transition duration-300 group-hover:brightness-75"
+          />
+          <span className="absolute bottom-2.5 left-2.5 rounded-full bg-background/80 px-2.5 py-1.5 text-xs font-semibold">
+            {formatDuration(trend.durationMs)}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1 px-1">
+          <span className="font-heading text-xl font-semibold">{trend.title}</span>
+          <span className="text-sm text-muted-foreground">
+            {`${trend.moveCount} ${trend.moveCount === 1 ? "move" : "moves"}`}
+          </span>
+        </div>
+      </Link>
+      <div className="border-t border-border px-1 pt-2">
+        <DeleteTrendButton id={trend.id} title={trend.title} inLibrary />
       </div>
-      <div className="flex flex-col gap-1 px-1">
-        <span className="font-heading text-xl font-semibold">{trend.title}</span>
-        <span className="text-sm text-muted-foreground">
-          {`${trend.moveCount} ${trend.moveCount === 1 ? "move" : "moves"}`}
-        </span>
-      </div>
-    </Link>
+    </article>
   );
 }
 

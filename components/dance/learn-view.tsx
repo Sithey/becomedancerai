@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { DancerPanel } from "@/components/dance/dancer-panel";
+import { DeleteTrendButton } from "@/components/dance/delete-trend-button";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -172,6 +173,10 @@ export function LearnView({ trend }: { trend: TrendData }) {
               </Button>
             ))}
         </section>
+      </div>
+
+      <div className="basis-full border-t border-border pt-6">
+        <DeleteTrendButton id={trend.id} title={trend.title} />
       </div>
     </div>
   );
