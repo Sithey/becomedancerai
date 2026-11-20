@@ -246,7 +246,11 @@ export function PracticeSession({ trend, mode }: Props) {
 
     const nextResult = summarizeAttempt(moves, framesRef.current);
     if (isFull && nextResult.final !== null) saveRunScore(trend.id, nextResult.final);
-    if (!isFull) savePracticePart();
+    if (!isFull) {
+      savePracticePart();
+      // Playing through the last move saved it as the place to resume: the next visit starts from move 1.
+      saveLastPracticedMove(trend.id, 0, list);
+    }
     practicePartRef.current = null;
     setResult(nextResult);
     setShowConfetti(nextResult.parts.length > 0 && nextResult.parts.every(({ score }) => isPassed(score)));

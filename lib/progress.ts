@@ -97,16 +97,16 @@ export function resumeMoveIndex(progress: TrendProgress, list: PracticeList, cou
   return Math.max(0, Math.min(count - 1, progress.lastMovePracticed));
 }
 
+// Only the score: a part is scored when it ends (or after a retry), so it must not move the resume position.
 export function saveMoveScore(trendId: string, moveIndex: number, score: number, list: PracticeList): TrendProgress {
   const current = getProgress(trendId);
+  // moveScores is keyed by whole move: a short part's index would land on the wrong move.
+  if (list !== "moves") return current;
   const existingScore = current.moveScores[moveIndex];
   const bestScore = existingScore !== undefined ? Math.max(existingScore, score) : score;
   const updated: TrendProgress = {
     ...current,
-    lastMovePracticed: moveIndex,
-    lastMoveList: list,
-    // moveScores is keyed by whole move: a short part's index would land on the wrong move.
-    moveScores: list === "moves" ? { ...current.moveScores, [moveIndex]: bestScore } : current.moveScores,
+    moveScores: { ...current.moveScores, [moveIndex]: bestScore },
   };
   saveProgress(trendId, updated);
   return updated;

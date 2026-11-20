@@ -41,13 +41,14 @@ describe("progress", () => {
     });
   });
 
-  it("saves move score and tracks last move practiced", () => {
+  it("saves a move score without moving the resume position", () => {
+    saveLastPracticedMove("trend-1", 0, "moves");
     const updated = saveMoveScore("trend-1", 2, 75, "moves");
-    expect(updated.lastMovePracticed).toBe(2);
+    expect(updated.lastMovePracticed).toBe(0);
     expect(updated.moveScores[2]).toBe(75);
 
     const reloaded = getProgress("trend-1");
-    expect(reloaded.lastMovePracticed).toBe(2);
+    expect(reloaded.lastMovePracticed).toBe(0);
     expect(reloaded.moveScores[2]).toBe(75);
   });
 
@@ -134,13 +135,12 @@ describe("progress", () => {
   it("records which list the last practiced index belongs to", () => {
     saveLastPracticedMove("trend-1", 5, "parts");
     expect(getProgress("trend-1")).toMatchObject({ lastMovePracticed: 5, lastMoveList: "parts" });
-    saveMoveScore("trend-1", 1, 60, "moves");
+    saveLastPracticedMove("trend-1", 1, "moves");
     expect(getProgress("trend-1")).toMatchObject({ lastMovePracticed: 1, lastMoveList: "moves" });
   });
 
   it("keeps move scores for whole moves only, not short parts", () => {
-    const updated = saveMoveScore("trend-1", 5, 80, "parts");
-    expect(updated).toMatchObject({ lastMovePracticed: 5, lastMoveList: "parts", moveScores: {} });
+    expect(saveMoveScore("trend-1", 5, 80, "parts").moveScores).toEqual({});
   });
 
   it("resumes the saved index only in the list it was saved for", () => {
