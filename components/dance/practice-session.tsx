@@ -26,7 +26,14 @@ import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/l
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
 import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
-import { getProgress, saveLastPracticedMove, saveMoveScore, saveRunScore } from "@/lib/progress";
+import {
+  getProgress,
+  resumeMoveIndex,
+  saveLastPracticedMove,
+  saveMoveScore,
+  saveRunScore,
+  type PracticeList,
+} from "@/lib/progress";
 import { cn } from "cn";
 
 const SPEEDS = [0.5, 0.75, 1];
@@ -99,6 +106,7 @@ export function PracticeSession({ trend, mode }: Props) {
   );
   const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
   const moves = isFull ? runParts : shorterParts ? shortMoves : trend.moves;
+  const list: PracticeList = shorterParts ? "parts" : "moves";
   const passed = useMemo(() => moves.map((move) => isPartPassed(move, completedParts)), [moves, completedParts]);
   const replayPart = coaching?.phase === "replay" && coaching.partIndex !== undefined
     ? runParts[coaching.partIndex]
@@ -215,6 +223,8 @@ export function PracticeSession({ trend, mode }: Props) {
   const finish = (allPassed: boolean) => {
     setDone(true);
     dancerRef.current?.pause();
+    // The last loop saved the last move: the next visit starts from move 1 again.
+    saveLastPracticedMove(trend.id, 0, list);
     if (allPassed) setShowConfetti(true);
   };
 
@@ -233,7 +243,7 @@ export function PracticeSession({ trend, mode }: Props) {
       const nextIndex = moveIndex + 1;
       setMoveIndex(nextIndex);
       if (!isFull) {
-        saveLastPracticedMove(trend.id, nextIndex);
+        saveLastPracticedMove(trend.id, nextIndex, list);
       }
       setCountingIn(started);
     }
@@ -253,15 +263,15 @@ export function PracticeSession({ trend, mode }: Props) {
     setDone(false);
     setShowConfetti(false);
     setMoveIndex(index);
-    saveLastPracticedMove(trend.id, index);
+    saveLastPracticedMove(trend.id, index, list);
     setCountingIn(started);
   };
 
   const handleStart = () => {
     // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
     if (!isFull) {
-      const last = getProgress(trend.id).lastMovePracticed;
-      if (last > 0) setMoveIndex(Math.min(moves.length - 1, last));
+      const resumeAt = resumeMoveIndex(getProgress(trend.id), list, moves.length);
+      if (resumeAt > 0) setMoveIndex(resumeAt);
     }
     setStarted(true);
     setCountingIn(true);
@@ -294,7 +304,7 @@ export function PracticeSession({ trend, mode }: Props) {
     }
     const loopScore = roundScore(averageScore(scoresRef.current));
     if (loopScore !== null) {
-      saveMoveScore(trend.id, moveIndex, loopScore);
+      saveMoveScore(trend.id, moveIndex, loopScore, list);
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
@@ -314,7 +324,7 @@ export function PracticeSession({ trend, mode }: Props) {
     setCompletedParts([]);
     setMoveIndex(0);
     if (!isFull) {
-      saveLastPracticedMove(trend.id, 0);
+      saveLastPracticedMove(trend.id, 0, list);
     }
     setLiveMove(0);
     setResumeAtMs(0);
