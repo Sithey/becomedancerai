@@ -227,7 +227,7 @@ export function PracticeSession({ trend, mode }: Props) {
       <div className="grid grid-cols-3 items-center gap-4">
         <span className="text-sm text-muted-foreground">{`Move ${shownMove + 1} of ${trend.moves.length}`}</span>
         <span className="text-center text-2xl font-semibold">{`Score ${scoreText(liveScore)}`}</span>
-        <span className="text-right font-medium">{tip}</span>
+        <span className="min-h-[1.5rem] truncate text-right font-medium">{tip}</span>
       </div>
 
       {!isFull && (
