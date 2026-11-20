@@ -217,6 +217,7 @@ export function AddTrendForm() {
       const res = await fetch("/api/trends", { method: "POST", body });
       const data = await res.json();
       if (res.status === 201) {
+        resetForm();
         router.push(`/trends/${data.id}`);
         return;
       }
