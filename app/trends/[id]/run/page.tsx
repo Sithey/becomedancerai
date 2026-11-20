@@ -18,7 +18,7 @@ async function RunLoader({ params }: { params: Promise<{ id: string }> }) {
           <Link href={`/trends/${trend.id}`} className="text-sm text-muted-foreground hover:text-foreground">
             ← Learn
           </Link>
-          <h1 className="font-heading text-4xl font-bold tracking-tight">{trend.title}</h1>
+          <h1 className="font-heading text-3xl font-bold tracking-tight sm:text-4xl">{trend.title}</h1>
         </div>
         <StepTabs trendId={trend.id} current="run" />
       </div>
@@ -29,7 +29,7 @@ async function RunLoader({ params }: { params: Promise<{ id: string }> }) {
 
 export default function RunPage({ params }: PageProps<"/trends/[id]/run">) {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-8 pt-7 pb-14">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-5 px-3 pt-5 pb-14 sm:gap-6 sm:px-8 sm:pt-7">
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <RunLoader params={params} />
       </Suspense>

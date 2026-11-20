@@ -41,7 +41,7 @@ export function AddTrendCard({ empty }: { empty?: boolean }) {
   return (
     <Link
       href="/trends/new"
-      className="flex min-h-[22rem] flex-col items-center justify-center gap-3 rounded-[1.25rem] border-[1.5px] border-dashed border-foreground/20 text-muted-foreground transition-colors hover:border-primary/60"
+      className="flex min-h-56 flex-col items-center justify-center gap-3 p-4 text-center sm:min-h-[22rem] rounded-[1.25rem] border-[1.5px] border-dashed border-foreground/20 text-muted-foreground transition-colors hover:border-primary/60"
     >
       <svg viewBox="0 0 40 40" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" className="size-10 text-primary">
         <circle cx="20" cy="20" r="18" />

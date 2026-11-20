@@ -18,7 +18,7 @@ export function StepTabs({ trendId, current }: { trendId: string; current: Step 
           href={`/trends/${trendId}${path}`}
           aria-current={step === current ? "step" : undefined}
           className={cn(
-            "rounded-full px-4 py-2.5 text-sm font-medium transition-colors",
+            "rounded-full px-3 py-2.5 text-sm font-medium whitespace-nowrap transition-colors sm:px-4",
             step === current ? "bg-primary font-semibold text-primary-foreground" : "text-muted-foreground hover:text-foreground",
           )}
         >

@@ -20,7 +20,7 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
             ← Library
           </Link>
-          <h1 className="font-heading text-5xl font-bold tracking-tight">{trend.title}</h1>
+          <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl">{trend.title}</h1>
           <span className="text-muted-foreground">{`${formatDuration(trend.durationMs)} · ${moves} · Learn one move at a time`}</span>
         </div>
         <StepTabs trendId={trend.id} current="learn" />
@@ -32,7 +32,7 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
 
 export default function LearnPage({ params }: PageProps<"/trends/[id]">) {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-8 pt-8 pb-16">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-4 pt-6 pb-16 sm:px-8 sm:pt-8">
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <LearnLoader params={params} />
       </Suspense>
