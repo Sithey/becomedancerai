@@ -1,7 +1,7 @@
 "use client";
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
@@ -72,6 +72,24 @@ export function PracticeSession({ trend, mode }: Props) {
   const retrying = retryIndex !== null;
   const showResults = result !== null && !retrying;
   const range = retrying ? moves[retryIndex] : { startMs, endMs: trend.durationMs };
+
+  // Back to the Start button, without writing progress: leaving the page keeps the move to resume.
+  const resetSession = useCallback(() => {
+    framesRef.current = [];
+    practicePartRef.current = null;
+    setLiveMove(0);
+    setStartMs(0);
+    setResult(null);
+    setRetryIndex(null);
+    setRetryScore(null);
+    setStarted(false);
+    setCountingIn(false);
+    setShowConfetti(false);
+  }, []);
+
+  // Next keeps a left page hidden (Activity) and re-runs its effects on return: without this reset the
+  // dancer starts again on its own, with no count-in, mid-session or during a part retry.
+  useLayoutEffect(() => resetSession, [resetSession]);
 
   useEffect(() => {
     if (retrying) playerRef.current?.focus();
@@ -197,6 +215,8 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
+      // The model is loaded again when the page is shown again: Start waits for it.
+      setModelStatus("loading");
     };
   }, [webcamRef, trend.id]);
 
@@ -275,17 +295,8 @@ export function PracticeSession({ trend, mode }: Props) {
 
   const restart = () => {
     dancerRef.current?.pause();
-    framesRef.current = [];
-    practicePartRef.current = null;
+    resetSession();
     if (!isFull) saveLastPracticedMove(trend.id, 0, list);
-    setLiveMove(0);
-    setStartMs(0);
-    setResult(null);
-    setRetryIndex(null);
-    setRetryScore(null);
-    setStarted(false);
-    setCountingIn(false);
-    setShowConfetti(false);
   };
 
   const changePartLength = (useShorterParts: boolean) => {
