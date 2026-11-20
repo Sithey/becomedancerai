@@ -1,7 +1,7 @@
 "use client";
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
-import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
@@ -18,11 +18,18 @@ import { FRAMED, framingState, sameFraming, type Framing } from "@/lib/pose/fram
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, isPassed } from "@/lib/pose/scoring";
-import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
+import { LearnerHistory, limbMotion, limbWeight, scoreSegment, type SegmentScore } from "@/lib/pose/segment";
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
-import type { FrameSize, Pose, TrendData } from "@/lib/pose/types";
+import type { FrameSize, LimbScores, Pose, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
-import { getProgress, saveLastPracticedMove, saveMoveScore, saveRunScore } from "@/lib/progress";
+import {
+  getProgress,
+  resumeMoveIndex,
+  saveLastPracticedMove,
+  saveMoveScore,
+  saveRunScore,
+  type PracticeList,
+} from "@/lib/progress";
 import { applyPartRetry, moveIndexAt, summarizeAttempt, type RecordedScore, type SessionResult } from "@/lib/result-summary";
 
 const SPEEDS = [0.5, 0.75, 1];
@@ -62,9 +69,28 @@ export function PracticeSession({ trend, mode }: Props) {
   );
   const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
   const moves = isFull ? runParts : shorterParts ? shortMoves : trend.moves;
+  const list: PracticeList = shorterParts ? "parts" : "moves";
   const retrying = retryIndex !== null;
   const showResults = result !== null && !retrying;
   const range = retrying ? moves[retryIndex] : { startMs, endMs: trend.durationMs };
+
+  // Back to the Start button, without writing progress: leaving the page keeps the move to resume.
+  const resetSession = useCallback(() => {
+    framesRef.current = [];
+    practicePartRef.current = null;
+    setLiveMove(0);
+    setStartMs(0);
+    setResult(null);
+    setRetryIndex(null);
+    setRetryScore(null);
+    setStarted(false);
+    setCountingIn(false);
+    setShowConfetti(false);
+  }, []);
+
+  // Next keeps a left page hidden (Activity) and re-runs its effects on return: without this reset the
+  // dancer starts again on its own, with no count-in, mid-session or during a part retry.
+  useLayoutEffect(() => resetSession, [resetSession]);
 
   useEffect(() => {
     if (retrying) playerRef.current?.focus();
@@ -74,7 +100,7 @@ export function PracticeSession({ trend, mode }: Props) {
   const savePracticePart = () => {
     const part = practicePartRef.current;
     const average = part ? averageScore(part.scores) : null;
-    if (part && average !== null) saveMoveScore(trend.id, part.index, Math.round(average));
+    if (part && average !== null) saveMoveScore(trend.id, part.index, Math.round(average), list);
   };
 
   const recordFrame = useEffectEvent((
@@ -83,6 +109,7 @@ export function PracticeSession({ trend, mode }: Props) {
     learner: Pose | null,
     learnerSize: FrameSize,
     dancerSize: FrameSize,
+    weights: LimbScores | undefined,
     updateUi: boolean,
   ) => {
     if (!started || countingIn || showResults || timeMs < range.startMs || timeMs > range.endMs) return;
@@ -92,7 +119,7 @@ export function PracticeSession({ trend, mode }: Props) {
 
     if (!isFull && !retrying && practicePartRef.current?.index !== index) {
       savePracticePart();
-      saveLastPracticedMove(trend.id, index);
+      saveLastPracticedMove(trend.id, index, list);
       practicePartRef.current = { index, scores: [] };
     }
     if (!match || !learner) return;
@@ -102,7 +129,7 @@ export function PracticeSession({ trend, mode }: Props) {
       const reference = dancerPoseAt(trend, timeMs - match.lagMs);
       if (reference) {
         frame.correction = correctionFor(
-          match.limbs, limbDirections(learner, learnerSize), limbDirections(reference, dancerSize),
+          match.limbs, limbDirections(learner, learnerSize), limbDirections(reference, dancerSize), weights,
         ) ?? undefined;
       }
     }
@@ -110,9 +137,18 @@ export function PracticeSession({ trend, mode }: Props) {
     practicePartRef.current?.scores.push(match.score);
   });
 
+  // A refetch of the page hands a new trend object with the same data: the loop below reads it here and
+  // is keyed on trend.id, so a refetch doesn't close and reload the pose model.
+  const trendRef = useRef(trend);
+
   const guideColor = useEffectEvent((color: string) => showPoseGuide ? color : "transparent");
 
   useEffect(() => {
+    trendRef.current = trend;
+  });
+
+  useEffect(() => {
+    const trend = trendRef.current;
     let cancelled = false;
     let landmarker: PoseLandmarker | null = null;
     let raf = 0;
@@ -120,8 +156,7 @@ export function PracticeSession({ trend, mode }: Props) {
     let lastUiUpdate = -Infinity;
     let lastSeen = performance.now();
     const primary = themeColor("primary");
-    const learnerCanvas = learnerCanvasRef.current;
-    const matchColor = learnerCanvas ? getComputedStyle(learnerCanvas).color : "";
+    const destructive = themeColor("destructive");
     const dancerSize = { width: trend.width, height: trend.height };
     const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
     const history = new LearnerHistory();
@@ -151,12 +186,14 @@ export function PracticeSession({ trend, mode }: Props) {
           history.push({ t: tMs, pose: learner });
           match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
         }
-        recordFrame(tMs, match, learner, learnerSize, dancerSize, updateUi);
+        const motionAt = match && motion[Math.round((tMs - match.lagMs) / trend.sampleMs)];
+        const weights = motionAt ? Object.fromEntries(Object.entries(motionAt).map(([limb, deg]) => [limb, limbWeight(deg)])) : undefined;
+        recordFrame(tMs, match, learner, learnerSize, dancerSize, weights, updateUi);
       } else {
         history.clear();
       }
 
-      drawLearnerPose(ctx, learner, match?.limbs, { color: guideColor(primary), matchColor });
+      drawLearnerPose(ctx, learner, match?.limbs, { color: guideColor(primary), passColor: primary, failColor: destructive });
 
       if (updateUi) {
         lastUiUpdate = now;
@@ -184,8 +221,10 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
+      // The model is loaded again when the page is shown again: Start waits for it.
+      setModelStatus("loading");
     };
-  }, [webcamRef, trend]);
+  }, [webcamRef, trend.id]);
 
   const startRetry = (index: number) => {
     dancerRef.current?.pause();
@@ -209,15 +248,14 @@ export function PracticeSession({ trend, mode }: Props) {
     practicePartRef.current = null;
     setLiveMove(index);
     setStartMs(moves[index].startMs);
-    saveLastPracticedMove(trend.id, index);
+    saveLastPracticedMove(trend.id, index, list);
     setCountingIn(started);
   };
 
   const handleStart = () => {
     // Read on click, not while rendering: the server has no localStorage, so a saved move there would mismatch.
     if (!isFull) {
-      const last = getProgress(trend.id).lastMovePracticed;
-      const index = Math.max(0, Math.min(moves.length - 1, last));
+      const index = resumeMoveIndex(getProgress(trend.id), list, moves.length);
       setLiveMove(index);
       setStartMs(moves[index]?.startMs ?? 0);
     }
@@ -233,7 +271,7 @@ export function PracticeSession({ trend, mode }: Props) {
     if (!started || countingIn || showResults) return;
     if (retryIndex !== null && result) {
       const [attempt] = summarizeAttempt([moves[retryIndex]], framesRef.current).parts;
-      if (!isFull && attempt.score !== null) saveMoveScore(trend.id, retryIndex, attempt.score);
+      if (!isFull && attempt.score !== null) saveMoveScore(trend.id, retryIndex, attempt.score, list);
       setResult(applyPartRetry(result, retryIndex, attempt));
       setRetryScore({ index: retryIndex, score: attempt.score });
       setRetryIndex(null);
@@ -242,7 +280,11 @@ export function PracticeSession({ trend, mode }: Props) {
 
     const nextResult = summarizeAttempt(moves, framesRef.current);
     if (isFull && nextResult.final !== null) saveRunScore(trend.id, nextResult.final);
-    if (!isFull) savePracticePart();
+    if (!isFull) {
+      savePracticePart();
+      // Playing through the last move saved it as the place to resume: the next visit starts from move 1.
+      saveLastPracticedMove(trend.id, 0, list);
+    }
     practicePartRef.current = null;
     setResult(nextResult);
     setShowConfetti(nextResult.parts.length > 0 && nextResult.parts.every(({ score }) => isPassed(score)));
@@ -259,17 +301,8 @@ export function PracticeSession({ trend, mode }: Props) {
 
   const restart = () => {
     dancerRef.current?.pause();
-    framesRef.current = [];
-    practicePartRef.current = null;
-    if (!isFull) saveLastPracticedMove(trend.id, 0);
-    setLiveMove(0);
-    setStartMs(0);
-    setResult(null);
-    setRetryIndex(null);
-    setRetryScore(null);
-    setStarted(false);
-    setCountingIn(false);
-    setShowConfetti(false);
+    resetSession();
+    if (!isFull) saveLastPracticedMove(trend.id, 0, list);
   };
 
   const changePartLength = (useShorterParts: boolean) => {
@@ -280,7 +313,7 @@ export function PracticeSession({ trend, mode }: Props) {
     practicePartRef.current = null;
     setShorterParts(useShorterParts);
     setLiveMove(index);
-    saveLastPracticedMove(trend.id, index);
+    saveLastPracticedMove(trend.id, index, useShorterParts ? "parts" : "moves");
     if (!started) setStartMs(nextMoves[index]?.startMs ?? 0);
   };
 
@@ -288,9 +321,10 @@ export function PracticeSession({ trend, mode }: Props) {
     modelStatus === "loading"
       ? "Loading pose model…"
       : modelStatus === "error"
-        ? "Couldn't load the pose model. Reload the page to try again."
+        ? "Couldn't load the pose model."
         : null;
   const ready = webcamStatus === "ready" && modelStatus === "ready";
+  const cannotStart = modelStatus === "error" || (webcamStatus !== "ready" && webcamStatus !== "starting");
   const normalSpeed = isFull ? 1 : speed;
   const mirrorToggle = (
     <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
@@ -343,6 +377,7 @@ export function PracticeSession({ trend, mode }: Props) {
               status={webcamStatus}
               notice={learnerNotice}
               framing={framing}
+              modelFailed={modelStatus === "error"}
             />
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>
@@ -357,7 +392,7 @@ export function PracticeSession({ trend, mode }: Props) {
               disabled={!ready}
               onClick={handleStart}
             >
-              {ready ? "Start" : "Getting ready…"}
+              {ready ? "Start" : cannotStart ? "Camera or model unavailable" : "Getting ready…"}
             </Button>
           </div>
         )}

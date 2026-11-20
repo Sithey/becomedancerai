@@ -9,7 +9,7 @@ import { cn } from "cn";
 
 const OFFSETS = [-2, -1, 0, 1, 2];
 
-export function TrendCarousel({ trends }: { trends: TrendSummary[] }) {
+export function TrendCarousel({ trends, canDelete }: { trends: TrendSummary[]; canDelete: boolean }) {
   const [selection, setSelection] = useState({ id: trends[0]?.id, position: 0 });
   const index = Math.max(0, trends.findIndex((trend) => trend.id === selection.id));
   const active = trends[index];
@@ -51,7 +51,7 @@ export function TrendCarousel({ trends }: { trends: TrendSummary[] }) {
                 hidden && "pointer-events-none opacity-0",
               )}
             >
-              <TrendCard trend={trend} onSelect={centered ? undefined : () => move(offset)} />
+              <TrendCard trend={trend} canDelete={canDelete} onSelect={centered ? undefined : () => move(offset)} />
             </div>
           );
         })}

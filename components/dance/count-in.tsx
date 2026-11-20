@@ -6,13 +6,19 @@ type Props = {
   onDone: () => void;
 };
 
+// One context for every beep: each AudioContext keeps an audio thread running until it is closed.
+let audio: AudioContext | null = null;
+
 function playBeep(freq: number, duration = 0.08) {
   try {
-    const AudioCtx =
-      window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    if (!audio || audio.state === "closed") {
+      const AudioCtx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      if (!AudioCtx) return;
+      audio = new AudioCtx();
+    }
+    const ctx = audio;
     ctx.resume().then(() => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
@@ -61,10 +67,10 @@ export function CountIn({ onDone }: Props) {
   }, [onDone]);
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-[2px]">
+    <div role="status" aria-live="assertive" aria-atomic="true" className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/50 backdrop-blur-[2px]">
       <span
         key={count}
-        className="animate-in zoom-in-75 text-8xl font-black text-primary drop-shadow-lg select-none duration-200 sm:text-9xl"
+        className="motion-safe:animate-in motion-safe:zoom-in-75 text-8xl font-black text-primary drop-shadow-lg select-none duration-200 sm:text-9xl"
       >
         {count}
       </span>

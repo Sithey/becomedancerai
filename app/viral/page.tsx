@@ -61,7 +61,7 @@ const TIPS = [
 
 export default function ViralPage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 bg-background p-8 text-foreground">
+    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-8 bg-background px-4 pt-10 pb-16 text-foreground sm:px-8 sm:pt-14">
       <div className="flex items-center justify-between">
         <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
           ← Library

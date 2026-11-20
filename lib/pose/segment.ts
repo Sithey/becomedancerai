@@ -70,6 +70,10 @@ export class LearnerHistory {
   }
 }
 
+export function limbWeight(motionDeg = 0): number {
+  return LIMB_WEIGHT_BASE + motionDeg / LIMB_WEIGHT_DEG;
+}
+
 export function scoreSegment(
   samples: LearnerSample[],
   learnerSize: FrameSize,
@@ -99,7 +103,7 @@ export function scoreSegment(
         const b = limbDirection(dancer, limb, dancerSize);
         if (!a || !b) continue;
         const score = limbScore(a, b);
-        const w = LIMB_WEIGHT_BASE + (motion[i]?.[limb] ?? 0) / LIMB_WEIGHT_DEG;
+        const w = limbWeight(motion[i]?.[limb]);
         weighted += score * w;
         weights += w;
         limbSum[limb] = (limbSum[limb] ?? 0) + score;

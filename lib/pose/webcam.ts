@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
 
-export type WebcamStatus = "starting" | "ready" | "denied" | "unavailable";
+export type WebcamStatus = "starting" | "ready" | "denied" | "busy" | "unavailable";
 
-export function webcamErrorStatus(err: unknown): "denied" | "unavailable" {
+export function webcamErrorStatus(err: unknown): "denied" | "busy" | "unavailable" {
   const name = (err as { name?: unknown } | null)?.name;
-  return name === "NotAllowedError" || name === "SecurityError" ? "denied" : "unavailable";
+  if (name === "NotAllowedError" || name === "SecurityError") return "denied";
+  // Another app or tab holds the camera, or the OS blocked it.
+  return name === "NotReadableError" || name === "AbortError" ? "busy" : "unavailable";
 }
 
 export function useWebcam(): { videoRef: RefObject<HTMLVideoElement | null>; status: WebcamStatus } {
@@ -41,6 +43,8 @@ export function useWebcam(): { videoRef: RefObject<HTMLVideoElement | null>; sta
     return () => {
       cancelled = true;
       stream?.getTracks().forEach((track) => track.stop());
+      // Also runs when Next hides the page (Activity): the camera starts again when it's shown again.
+      setStatus("starting");
     };
   }, []);
 

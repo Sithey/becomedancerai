@@ -7,6 +7,7 @@ type Side = "left" | "right";
 export type PoseCorrection = { limb: LimbName; problem: string; tip: string | null };
 
 const KNEE_BEND_TOLERANCE = (10 * Math.PI) / 180;
+const MIN_RAISE_LOWER_ERROR = (20 * Math.PI) / 180;
 
 export function limbDirections(pose: Pose, size: FrameSize): LimbDirections {
   const directions: LimbDirections = {};
@@ -31,10 +32,13 @@ export function correctionFor(
   limbs: LimbScores,
   learnerDirs: LimbDirections,
   dancerDirs: LimbDirections,
+  weights: LimbScores = {},
 ): PoseCorrection | null {
+  // Same weighting as the segment score: a limb the dancer is moving counts more than a still one.
+  const impact = (limb: LimbName) => (100 - limbs[limb]!) * (weights[limb] ?? 1);
   let worst: LimbName | null = null;
   for (const limb of failingLimbs(limbs)) {
-    if (worst === null || limbs[limb]! < limbs[worst]!) worst = limb;
+    if (worst === null || impact(limb) > impact(worst)) worst = limb;
   }
   if (worst === null) return null;
 
@@ -65,18 +69,22 @@ export function correctionFor(
   }
 
   const part = worst.endsWith("Hand") ? "hand" : "arm";
+  const generic = { limb: worst, problem: `Your ${side} ${part} was out of position.`, tip: `Watch your ${side} ${part}` };
+  // Hands are too short and noisy to tell raised from lowered.
+  if (part === "hand") return generic;
   const learnerDir = learnerDirs[worst];
   const dancerDir = dancerDirs[worst];
+  if (!learnerDir || !dancerDir) return generic;
   // Image y increases downwards, so a larger y calls for raising the arm.
-  const difference = learnerDir && dancerDir ? learnerDir.y - dancerDir.y : 0;
-  if (!difference) {
-    return { limb: worst, problem: `Your ${side} ${part} was out of position.`, tip: null };
-  }
-  const tooLow = difference > 0;
+  const dy = learnerDir.y - dancerDir.y;
+  const dx = learnerDir.x - dancerDir.x;
+  const error = Math.acos(Math.max(-1, Math.min(1, learnerDir.x * dancerDir.x + learnerDir.y * dancerDir.y)));
+  if (Math.abs(dy) <= Math.abs(dx) || error < MIN_RAISE_LOWER_ERROR) return generic;
+  const tooLow = dy > 0;
   return {
     limb: worst,
-    problem: `Your ${side} ${part} was ${tooLow ? "too low" : "too high"}.`,
-    tip: `${tooLow ? "Raise" : "Lower"} your ${side} ${part}`,
+    problem: `Your ${side} arm was ${tooLow ? "too low" : "too high"}.`,
+    tip: `${tooLow ? "Raise" : "Lower"} your ${side} arm`,
   };
 }
 
@@ -84,6 +92,7 @@ export function tipFor(
   limbs: LimbScores,
   learnerDirs: LimbDirections,
   dancerDirs: LimbDirections,
+  weights?: LimbScores,
 ): string | null {
-  return correctionFor(limbs, learnerDirs, dancerDirs)?.tip ?? null;
+  return correctionFor(limbs, learnerDirs, dancerDirs, weights)?.tip ?? null;
 }

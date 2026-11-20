@@ -61,9 +61,9 @@ test("coaches only the lowest-scoring failing limb", () => {
   ).toBe("Bend your right knee");
 });
 
-test("gives no arm cue for a purely horizontal mismatch or missing direction", () => {
-  expect(tipFor({ leftForearm: 20 }, { leftForearm: left }, { leftForearm: right })).toBeNull();
-  expect(tipFor({ leftForearm: 20 }, { leftForearm: down }, {})).toBeNull();
+test("falls back to a generic arm cue for a purely horizontal mismatch or missing direction", () => {
+  expect(tipFor({ leftForearm: 20 }, { leftForearm: left }, { leftForearm: right })).toBe("Watch your left arm");
+  expect(tipFor({ leftForearm: 20 }, { leftForearm: down }, {})).toBe("Watch your left arm");
 });
 
 test("no tip when everything passes", () => {
@@ -71,9 +71,29 @@ test("no tip when everything passes", () => {
   expect(tipFor({}, {}, {})).toBeNull();
 });
 
-test("hands get their own raise/lower cue", () => {
-  expect(tipFor({ leftHand: 10 }, { leftHand: down }, { leftHand: up })).toBe("Raise your left hand");
-  expect(tipFor({ rightHand: 10 }, { rightHand: up }, { rightHand: down })).toBe("Lower your right hand");
+test("hands never get a raise/lower cue", () => {
+  expect(tipFor({ leftHand: 10 }, { leftHand: down }, { leftHand: up })).toBe("Watch your left hand");
+  expect(tipFor({ rightHand: 10 }, { rightHand: up }, { rightHand: down })).toBe("Watch your right hand");
+});
+
+test("a sideways arm error is not a raise/lower cue", () => {
+  const learner = { x: 0.8, y: 0.6 };
+  const dancer = { x: -0.8, y: 0.6 };
+  expect(tipFor({ leftForearm: 20 }, { leftForearm: learner }, { leftForearm: dancer })).toBe("Watch your left arm");
+});
+
+test("a small angle error is not a raise/lower cue", () => {
+  const a = { x: 0, y: 1 };
+  const b = { x: Math.sin(0.2), y: Math.cos(0.2) };
+  expect(tipFor({ leftForearm: 20 }, { leftForearm: a }, { leftForearm: b })).toBe("Watch your left arm");
+});
+
+test("the tip names the limb with the most weighted impact", () => {
+  const limbs = { leftForearm: 60, rightShin: 50 };
+  const learner = { leftForearm: down, rightThigh: down, rightShin: down };
+  const dancer = { leftForearm: up, rightThigh: down, rightShin: right };
+  expect(tipFor(limbs, learner, dancer)).toBe("Bend your right knee");
+  expect(tipFor(limbs, learner, dancer, { leftForearm: 2, rightShin: 0.1 })).toBe("Raise your left arm");
 });
 
 test("head and torso have no side", () => {

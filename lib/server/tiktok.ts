@@ -3,6 +3,7 @@ import "server-only";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import { MAX_UPLOAD_BYTES } from "@/lib/pose/config";
+import { hasMp4FileType } from "./videos";
 
 const run = promisify(execFile);
 const VIDEO_HOST = "www.tiktok.com";
@@ -47,8 +48,23 @@ async function resolveShortLink(url: URL, signal: AbortSignal): Promise<URL> {
 }
 
 export class TikTokVideoTooLargeError extends Error {}
+export class TikTokBusyError extends Error {}
+
+// Each download runs a yt-dlp process and holds up to MAX_UPLOAD_BYTES in memory.
+const MAX_CONCURRENT_DOWNLOADS = 2;
+let activeDownloads = 0;
 
 export async function downloadTikTok(url: URL, requestSignal: AbortSignal) {
+  if (activeDownloads >= MAX_CONCURRENT_DOWNLOADS) throw new TikTokBusyError();
+  activeDownloads++;
+  try {
+    return await download(url, requestSignal);
+  } finally {
+    activeDownloads--;
+  }
+}
+
+async function download(url: URL, requestSignal: AbortSignal) {
   const signal = AbortSignal.any([requestSignal, AbortSignal.timeout(30_000)]);
   const videoUrl = await resolveShortLink(url, signal);
   try {
@@ -61,7 +77,7 @@ export async function downloadTikTok(url: URL, requestSignal: AbortSignal) {
     ], { encoding: "buffer", maxBuffer: MAX_UPLOAD_BYTES, killSignal: "SIGKILL", signal });
 
     // yt-dlp's format filter relies on upstream metadata. Check the MP4 file type box too.
-    if (stdout.length < 16 || stdout.toString("ascii", 4, 8) !== "ftyp") {
+    if (!hasMp4FileType(stdout)) {
       throw new Error("TikTok did not return an MP4");
     }
     return stdout;

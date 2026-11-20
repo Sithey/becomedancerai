@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { PracticeSession } from "@/components/dance/practice-session";
 import { Button } from "@/components/ui/button";
 import type { TrendData } from "@/lib/pose/types";
@@ -8,6 +8,12 @@ import type { TrendData } from "@/lib/pose/types";
 export function PracticePreview({ trend }: { trend: TrendData }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stage, setStage] = useState<"watching" | "finished" | "practice" | "unavailable">("watching");
+
+  // A hidden page (Next's Activity) keeps its video playing, sound included: pause it on the way out.
+  useLayoutEffect(() => {
+    const video = videoRef.current;
+    return () => video?.pause();
+  }, []);
 
   if (stage === "practice") return <PracticeSession trend={trend} mode="moves" />;
 

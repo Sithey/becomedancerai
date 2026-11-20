@@ -19,23 +19,24 @@ export function drawLearnerPose(
   ctx: CanvasRenderingContext2D,
   pose: Pose | null,
   scores: LimbScores | undefined,
-  { color, matchColor }: { color: string; matchColor: string },
+  { color, passColor, failColor }: { color: string; passColor: string; failColor: string },
 ) {
   const limbColors: Partial<Record<LimbName, string>> = {};
-  if (scores && matchColor) {
+  if (scores) {
     for (const limb of scoredLimbs) {
-      if ((scores[limb] ?? 0) >= PASS_SCORE) limbColors[limb] = matchColor;
+      const score = scores[limb];
+      if (score !== undefined) limbColors[limb] = score >= PASS_SCORE ? passColor : failColor;
     }
   }
   drawSkeleton(ctx, pose, { color, limbColors });
-  if (!pose || !scores || !matchColor) return;
+  if (!pose || !scores) return;
 
   const { width, height } = ctx.canvas;
-  ctx.fillStyle = matchColor;
   for (const [index, limbs] of limbsByJoint) {
     const joint = pose[index];
     if (!joint || !limbs.every((limb) => limbColors[limb] !== undefined)) continue;
 
+    ctx.fillStyle = limbs.some((limb) => limbColors[limb] === failColor) ? failColor : passColor;
     ctx.beginPath();
     ctx.arc(joint.x * width, joint.y * height, height / 80, 0, Math.PI * 2);
     ctx.fill();

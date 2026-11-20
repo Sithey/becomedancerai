@@ -24,7 +24,7 @@ function TrendVideoThumbnail({ videoUrl, shaded }: { videoUrl: string; shaded: b
   );
 }
 
-export function TrendCard({ trend, onSelect }: { trend: TrendSummary; onSelect?: () => void }) {
+export function TrendCard({ trend, onSelect, canDelete }: { trend: TrendSummary; onSelect?: () => void; canDelete: boolean }) {
   const preview = onSelect !== undefined;
   const duration = formatDuration(trend.durationMs);
   const moves = `${trend.moveCount} ${trend.moveCount === 1 ? "move" : "moves"}`;
@@ -68,9 +68,11 @@ export function TrendCard({ trend, onSelect }: { trend: TrendSummary; onSelect?:
         <span className="font-heading text-xl font-semibold wrap-anywhere">{trend.title}</span>
         <span className="text-sm text-muted-foreground">{moves}</span>
       </div>
-      <div className={cn("relative z-20 min-h-9 border-t px-1 pt-2", preview ? "border-transparent" : "border-border")}>
-        {!preview && <DeleteTrendButton id={trend.id} title={trend.title} inLibrary />}
-      </div>
+      {canDelete && (
+        <div className={cn("relative z-20 min-h-9 border-t px-1 pt-2", preview ? "border-transparent" : "border-border")}>
+          {!preview && <DeleteTrendButton id={trend.id} title={trend.title} inLibrary />}
+        </div>
+      )}
     </article>
   );
 }

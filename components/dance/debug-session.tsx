@@ -178,7 +178,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
         history.clear();
       }
 
-      // Same colors as Practice: segment scores smoothed over half a second.
+      // Same colors as Practice (primary passing, destructive failing), but smoothed over half a second; Practice colors the raw segment scores.
       const failing = failingLimbs(smoother.current(now));
       drawSkeleton(ctx, learner, {
         color: primary,
@@ -259,7 +259,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
     modelStatus === "loading"
       ? "Loading pose model…"
       : modelStatus === "error"
-        ? "Couldn't load the pose model. Reload the page to try again."
+        ? "Couldn't load the pose model."
         : null;
   const rows = live.rows;
 
@@ -337,6 +337,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
             canvasRef={learnerCanvasRef}
             status={webcamStatus}
             notice={learnerNotice}
+            modelFailed={modelStatus === "error"}
           />
         </div>
 

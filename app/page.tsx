@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { TrendCarousel } from "@/components/dance/trend-carousel";
 import { AddTrendCard } from "@/components/dance/trend-card";
+import { debugEnabled } from "@/lib/server/debug-attempts";
 import { listTrends } from "@/lib/server/trends";
 
 const STEPS = ["Learn", "Practice", "Full run"];
@@ -9,6 +10,7 @@ const STEPS = ["Learn", "Practice", "Full run"];
 async function TrendingVideos() {
   await connection();
   const trends = await listTrends();
+  const canDelete = debugEnabled();
   return (
     <section aria-labelledby="trends-title" className="flex flex-col gap-5">
       <div className="flex items-baseline justify-between gap-4">
@@ -18,7 +20,7 @@ async function TrendingVideos() {
         <span className="text-sm text-muted-foreground">{`${trends.length} ${trends.length === 1 ? "trend" : "trends"}`}</span>
       </div>
       {trends.length > 0 ? (
-        <TrendCarousel trends={trends} />
+        <TrendCarousel trends={trends} canDelete={canDelete} />
       ) : (
         <div className="mx-auto w-full max-w-xs">
           <AddTrendCard empty />

@@ -1,5 +1,9 @@
+// Practice can step through whole moves or "Shorter parts": an index only means something in its own list.
+export type PracticeList = "moves" | "parts";
+
 export type TrendProgress = {
   lastMovePracticed: number;
+  lastMoveList: PracticeList;
   moveScores: Record<number, number>;
   firstRunScore: number | null;
   bestRunScore: number | null;
@@ -7,6 +11,7 @@ export type TrendProgress = {
 
 const DEFAULT_PROGRESS: TrendProgress = {
   lastMovePracticed: 0,
+  lastMoveList: "moves",
   moveScores: {},
   firstRunScore: null,
   bestRunScore: null,
@@ -58,7 +63,8 @@ export function parseProgress(raw: string | null): TrendProgress {
     const parsed = JSON.parse(raw);
     return {
       lastMovePracticed:
-        typeof parsed.lastMovePracticed === "number" ? parsed.lastMovePracticed : 0,
+        Number.isInteger(parsed.lastMovePracticed) && parsed.lastMovePracticed >= 0 ? parsed.lastMovePracticed : 0,
+      lastMoveList: parsed.lastMoveList === "parts" ? "parts" : "moves",
       moveScores:
         typeof parsed.moveScores === "object" && parsed.moveScores !== null
           ? parsed.moveScores
@@ -86,27 +92,32 @@ function saveProgress(trendId: string, progress: TrendProgress): void {
   notify();
 }
 
-export function saveMoveScore(trendId: string, moveIndex: number, score: number): TrendProgress {
+export function resumeMoveIndex(progress: TrendProgress, list: PracticeList, count: number): number {
+  if (progress.lastMoveList !== list) return 0;
+  return Math.max(0, Math.min(count - 1, progress.lastMovePracticed));
+}
+
+// Only the score: a part is scored when it ends (or after a retry), so it must not move the resume position.
+export function saveMoveScore(trendId: string, moveIndex: number, score: number, list: PracticeList): TrendProgress {
   const current = getProgress(trendId);
+  // moveScores is keyed by whole move: a short part's index would land on the wrong move.
+  if (list !== "moves") return current;
   const existingScore = current.moveScores[moveIndex];
   const bestScore = existingScore !== undefined ? Math.max(existingScore, score) : score;
   const updated: TrendProgress = {
     ...current,
-    lastMovePracticed: moveIndex,
-    moveScores: {
-      ...current.moveScores,
-      [moveIndex]: bestScore,
-    },
+    moveScores: { ...current.moveScores, [moveIndex]: bestScore },
   };
   saveProgress(trendId, updated);
   return updated;
 }
 
-export function saveLastPracticedMove(trendId: string, moveIndex: number): TrendProgress {
+export function saveLastPracticedMove(trendId: string, moveIndex: number, list: PracticeList): TrendProgress {
   const current = getProgress(trendId);
   const updated: TrendProgress = {
     ...current,
     lastMovePracticed: moveIndex,
+    lastMoveList: list,
   };
   saveProgress(trendId, updated);
   return updated;

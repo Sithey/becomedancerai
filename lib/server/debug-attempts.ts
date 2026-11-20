@@ -8,9 +8,16 @@ export function debugEnabled() {
   return process.env.NODE_ENV === "development";
 }
 
-// Names come from the request body: keep only [a-z0-9-] so a file can't land outside ATTEMPTS_DIR.
+// Names come from the request body: keep only [a-z0-9-] so a file can't land outside ATTEMPTS_DIR,
+// and cap the length so the file name stays under the filesystem limit.
 function safe(part: string) {
-  return part.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "x";
+  return (
+    part
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .slice(0, 40)
+      .replace(/^-+|-+$/g, "") || "x"
+  );
 }
 
 const pad = (n: number) => String(n).padStart(2, "0");

@@ -4,7 +4,9 @@ import { Readable } from "node:stream";
 import { parseRange } from "@/lib/server/range";
 import { isValidVideoFileName, videoFilePath } from "@/lib/server/videos";
 
-export async function GET(request: Request, { params }: { params: Promise<{ file: string }> }) {
+type Context = { params: Promise<{ file: string }> };
+
+async function prepare(request: Request, { params }: Context) {
   const { file } = await params;
   if (!isValidVideoFileName(file)) return new Response(null, { status: 404 });
 
@@ -31,6 +33,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   // File names are random ids that are never reused, so a cached copy never goes stale.
   headers["Cache-Control"] = "public, max-age=31536000, immutable";
 
-  const body = Readable.toWeb(createReadStream(path, { start, end })) as ReadableStream;
-  return new Response(body, { status: range ? 206 : 200, headers });
+  return { path, start, end, status: range ? 206 : 200, headers };
+}
+
+export async function GET(request: Request, context: Context) {
+  const video = await prepare(request, context);
+  if (video instanceof Response) return video;
+  const body = Readable.toWeb(createReadStream(video.path, { start: video.start, end: video.end })) as ReadableStream;
+  return new Response(body, { status: video.status, headers: video.headers });
+}
+
+// Without this, Next answers HEAD with GET and drops the body unread, leaking the open file.
+export async function HEAD(request: Request, context: Context) {
+  const video = await prepare(request, context);
+  if (video instanceof Response) return video;
+  return new Response(null, { status: video.status, headers: video.headers });
 }

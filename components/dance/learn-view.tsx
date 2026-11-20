@@ -15,7 +15,7 @@ import { cn } from "cn";
 
 const SPEEDS = [0.5, 0.75, 1];
 
-export function LearnView({ trend }: { trend: TrendData }) {
+export function LearnView({ trend, canDelete }: { trend: TrendData; canDelete: boolean }) {
   const [moveIndex, setMoveIndex] = useState(0);
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
@@ -170,9 +170,11 @@ export function LearnView({ trend }: { trend: TrendData }) {
         </section>
       </div>
 
-      <div className="basis-full border-t border-border pt-6">
-        <DeleteTrendButton id={trend.id} title={trend.title} />
-      </div>
+      {canDelete && (
+        <div className="basis-full border-t border-border pt-6">
+          <DeleteTrendButton id={trend.id} title={trend.title} />
+        </div>
+      )}
     </div>
   );
 }

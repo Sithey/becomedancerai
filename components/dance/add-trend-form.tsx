@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { MAX_DURATION_MS, MAX_TITLE_LENGTH, MIN_DETECTION_RATE, SAMPLE_MS } from "@/lib/pose/config";
+import { MAX_DURATION_MS, MAX_TITLE_LENGTH, MAX_UPLOAD_BYTES, MIN_DETECTION_RATE, SAMPLE_MS } from "@/lib/pose/config";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { extractPoses } from "@/lib/pose/extract";
 import { splitMoves } from "@/lib/pose/split";
@@ -22,6 +22,8 @@ type Result = {
 };
 
 const TITLE_TOO_LONG = `Title must be ${MAX_TITLE_LENGTH} characters or fewer`;
+
+const VIDEO_TOO_LARGE = `Video must be under ${MAX_UPLOAD_BYTES / 1024 / 1024} MB`;
 
 const TIKTOK_DOWNLOAD_ERROR = "Couldn't download this TikTok. Save the video and upload the mp4 instead.";
 
@@ -42,6 +44,7 @@ async function getTikTokFile(url: string, signal: AbortSignal): Promise<File> {
   const blob = await response.blob().catch(() => null);
   if (!blob) throw new Error(TIKTOK_DOWNLOAD_ERROR);
   if (blob.type !== "video/mp4" || blob.size === 0) throw new Error("Video must be an mp4");
+  if (blob.size > MAX_UPLOAD_BYTES) throw new Error(VIDEO_TOO_LARGE);
   return new File([blob], "tiktok.mp4", { type: blob.type });
 }
 
@@ -131,6 +134,11 @@ export function AddTrendForm() {
       setError("Video must be an mp4");
       return;
     }
+    // Checked before the long pose extraction: the server would refuse it on Save.
+    if (next && next.size > MAX_UPLOAD_BYTES) {
+      setError(VIDEO_TOO_LARGE);
+      return;
+    }
     setFile(next);
   }
 
@@ -186,9 +194,10 @@ export function AddTrendForm() {
         seconds: (performance.now() - started) / 1000,
       });
     } catch (err) {
+      // Also aborted when the page is hidden: no frozen progress bar when the user comes back.
+      setProgress(null);
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Processing failed");
-      setProgress(null);
     } finally {
       setDownloading(false);
       setProcessing(false);
