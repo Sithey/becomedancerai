@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { comparePoses } from "./compare";
+import { comparePoses, limbScore } from "./compare";
 import { fromMediaPipe, limbDirection } from "./landmarks";
 import { standingPose, withPoint } from "./test-poses";
 
@@ -12,12 +12,21 @@ describe("comparePoses", () => {
     expect(r.score).toBeCloseTo(100);
   });
 
-  test("forearm 90° off scores 25, opposite scores 0", () => {
+  test("forearm 45° off scores 50, 90° and opposite score 0", () => {
     const dancer = withPoint(withPoint(standingPose(), 13, 0.5, 0.5), 15, 0.5, 0.6);
+    const s = Math.SQRT1_2 * 0.1;
+    const diag = withPoint(dancer, 15, 0.5 + s, 0.5 + s);
     const side = withPoint(dancer, 15, 0.6, 0.5);
     const up = withPoint(dancer, 15, 0.5, 0.4);
-    expect(comparePoses(side, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(25);
+    expect(comparePoses(diag, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(50);
+    expect(comparePoses(side, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(0);
     expect(comparePoses(up, SQUARE, dancer, SQUARE).limbs.leftForearm).toBeCloseTo(0);
+  });
+
+  test("within 20° scores 100", () => {
+    const a = { x: 0, y: 1 };
+    const b = { x: Math.sin(Math.PI / 10), y: Math.cos(Math.PI / 10) };
+    expect(limbScore(a, b)).toBe(100);
   });
 
   test("bigger and shifted learner still scores 100", () => {
