@@ -25,6 +25,7 @@ import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/l
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
 import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
+import { getProgress, saveLastPracticedMove, saveMoveScore, saveRunScore } from "@/lib/progress";
 import { cn } from "cn";
 
 const SPEEDS = [0.5, 0.75, 1];
@@ -51,7 +52,13 @@ export function PracticeSession({ trend, mode }: Props) {
   // The dancer waits for the camera and the model, or the start of move 1 isn't scored.
   const [started, setStarted] = useState(false);
 
-  const [moveIndex, setMoveIndex] = useState(0);
+  const [moveIndex, setMoveIndex] = useState(() => {
+    if (mode === "moves" && typeof window !== "undefined") {
+      const p = getProgress(trend.id);
+      return Math.min(trend.moves.length - 1, Math.max(0, p.lastMovePracticed));
+    }
+    return 0;
+  });
   const [completedParts, setCompletedParts] = useState<Move[]>([]);
   const [shorterParts, setShorterParts] = useState(false);
   const [done, setDone] = useState(false);
@@ -223,7 +230,11 @@ export function PracticeSession({ trend, mode }: Props) {
     if (moveIndex === moves.length - 1) {
       finish(passed.every((didPass, i) => didPass || (passedCurrent && i === moveIndex)));
     } else {
-      setMoveIndex((prev) => prev + 1);
+      const nextIndex = moveIndex + 1;
+      setMoveIndex(nextIndex);
+      if (!isFull) {
+        saveLastPracticedMove(trend.id, nextIndex);
+      }
       setCountingIn(started);
     }
   };
@@ -252,12 +263,20 @@ export function PracticeSession({ trend, mode }: Props) {
         return;
       }
       setResumeAtMs(trend.durationMs);
+      const finalScore = roundScore(averageScore(bucketsRef.current.flat()));
+      if (finalScore !== null) {
+        saveRunScore(trend.id, finalScore);
+      }
       setResult({
-        final: roundScore(averageScore(bucketsRef.current.flat())),
+        final: finalScore,
         parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
       setShowConfetti(true);
       return;
+    }
+    const loopScore = roundScore(averageScore(scoresRef.current));
+    if (loopScore !== null) {
+      saveMoveScore(trend.id, moveIndex, loopScore);
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
@@ -276,6 +295,9 @@ export function PracticeSession({ trend, mode }: Props) {
     clearCoaching();
     setCompletedParts([]);
     setMoveIndex(0);
+    if (!isFull) {
+      saveLastPracticedMove(trend.id, 0);
+    }
     setLiveMove(0);
     setResumeAtMs(0);
     setDone(false);
