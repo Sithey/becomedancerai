@@ -1,5 +1,5 @@
 import type { Move, NewTrend, PoseFrame } from "@/lib/pose/types";
-import { MAX_DURATION_MS, MAX_UPLOAD_BYTES, MIN_DETECTION_RATE } from "@/lib/pose/config";
+import { MAX_DURATION_MS, MAX_TITLE_LENGTH, MAX_UPLOAD_BYTES, MIN_DETECTION_RATE } from "@/lib/pose/config";
 
 type Result = { ok: true; value: NewTrend; video: File } | { ok: false; error: string };
 
@@ -45,7 +45,7 @@ export function parseNewTrend(form: FormData): Result {
   const rawTitle = form.get("title");
   const title = typeof rawTitle === "string" ? rawTitle.trim() : "";
   if (!title) return fail("Title is required");
-  if (title.length > 80) return fail("Title must be 80 characters or fewer");
+  if (title.length > MAX_TITLE_LENGTH) return fail(`Title must be ${MAX_TITLE_LENGTH} characters or fewer`);
 
   if (!(video instanceof File) || video.type !== "video/mp4" || video.size === 0) {
     return fail("Video must be an mp4");
