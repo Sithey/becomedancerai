@@ -15,6 +15,15 @@ export function shorterPracticeParts(moves: Move[]): Move[] {
   });
 }
 
+export function fullRunParts(moves: Move[], durationMs: number): Move[] {
+  const boundaries = [...new Set([0, durationMs, ...moves.map((move) => move.endMs)])].sort(
+    (a, b) => a - b,
+  );
+  return shorterPracticeParts(
+    boundaries.slice(1).map((endMs, index) => ({ startMs: boundaries[index], endMs })),
+  );
+}
+
 export function isPartPassed(part: Move, completedParts: Move[]): boolean {
   let covered = part.startMs;
   // Completed parts are ordered by start time, so a gap cannot be filled by later entries.

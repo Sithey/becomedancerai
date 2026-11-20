@@ -7,7 +7,7 @@ import { CoachingTip } from "@/components/dance/coaching-tip";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
 import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
-import { isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
+import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
 import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -56,11 +56,12 @@ export function PracticeSession({ trend, mode }: Props) {
   const [mirrored, setMirrored] = useState(true);
   const [runKey, setRunKey] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
+  const [resumeAtMs, setResumeAtMs] = useState(0);
 
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
 
-  // Frame scores of the current loop (moves mode) or of the whole run (full mode).
+  // Practice tracks one loop. Full Run keeps each part's scores across retries.
   const scoresRef = useRef<number[]>([]);
   const bucketsRef = useRef<number[][]>([]);
   const advanceTimer = useRef<number | null>(null);
@@ -73,18 +74,30 @@ export function PracticeSession({ trend, mode }: Props) {
 
   useEffect(() => cancelAdvance, [cancelAdvance]);
 
-  const replayAttempt = useCallback(() => {
+  const replayAttempt = useCallback((partIndex?: number) => {
     scoresRef.current = [];
-    bucketsRef.current = [];
+    if (partIndex === undefined) {
+      bucketsRef.current = [];
+    } else {
+      bucketsRef.current[partIndex] = [];
+    }
     setRunKey((k) => k + 1);
   }, []);
-  const { coaching, pauseIfNeeded, replay, clearCoaching, isReviewing } = useCoachingReplay(replayAttempt);
+  const { coaching, pauseIfNeeded, replay, clearCoaching, getCoaching } = useCoachingReplay(replayAttempt);
 
-  const fullRange = useMemo(() => ({ startMs: 0, endMs: trend.durationMs }), [trend.durationMs]);
+  const runParts = useMemo(
+    () => fullRunParts(trend.moves, trend.durationMs),
+    [trend.moves, trend.durationMs],
+  );
   const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
-  const moves = !isFull && shorterParts ? shortMoves : trend.moves;
+  const moves = isFull ? runParts : shorterParts ? shortMoves : trend.moves;
   const passed = useMemo(() => moves.map((move) => isPartPassed(move, completedParts)), [moves, completedParts]);
-  const range = isFull ? fullRange : moves[moveIndex];
+  const replayPart = coaching?.phase === "replay" && coaching.partIndex !== undefined
+    ? runParts[coaching.partIndex]
+    : null;
+  const range = isFull
+    ? replayPart ?? { startMs: resumeAtMs, endMs: trend.durationMs }
+    : moves[moveIndex];
 
   useEffect(() => {
     let cancelled = false;
@@ -114,18 +127,23 @@ export function PracticeSession({ trend, mode }: Props) {
       const dancer = dancerRef.current;
       let match: ReturnType<typeof bestMatch> = null;
       let reviewScores: LimbScores | undefined;
+      let partIndex = -1;
       if (dancer && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
+        const currentCoaching = getCoaching();
+        if (isFull) partIndex = moveIndexAt(runParts, tMs);
         if (!dancer.paused) {
           match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
           if (match && match.score !== null) {
-            scoresRef.current.push(match.score);
-            if (mode === "full") {
-              const i = moveIndexAt(trend.moves, tMs);
-              if (i !== -1) (bucketsRef.current[i] ??= []).push(match.score);
+            if (!isFull) {
+              scoresRef.current.push(match.score);
+            } else if (partIndex !== -1 && (
+              currentCoaching?.phase !== "replay" || currentCoaching.partIndex === partIndex
+            )) {
+              (bucketsRef.current[partIndex] ??= []).push(match.score);
             }
           }
-        } else if (learner && isReviewing()) {
+        } else if (learner && currentCoaching?.phase === "review") {
           const frozenPose = dancerPoseAt(trend, tMs);
           if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
         }
@@ -135,18 +153,16 @@ export function PracticeSession({ trend, mode }: Props) {
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
-        if (dancer && learner && match && match.score !== null) {
+        if (dancer && learner && match && match.score !== null && (!isFull || partIndex !== -1)) {
           const { score, matchT, limbs } = match;
           pauseIfNeeded(dancer, score, () => {
             const dancerPose = trend.poses.find((frame) => frame.t === matchT)?.pose;
             return dancerPose
               ? correctionFor(limbs, limbDirections(learner, learnerSize), limbDirections(dancerPose, dancerSize))
               : null;
-          });
+          }, isFull ? partIndex : undefined);
         }
-        if (mode === "full" && dancer) {
-          setLiveMove(Math.max(0, moveIndexAt(trend.moves, dancer.currentTime * 1000)));
-        }
+        if (partIndex !== -1) setLiveMove(partIndex);
       }
     };
 
@@ -170,7 +186,7 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelAnimationFrame(raf);
       landmarker?.close();
     };
-  }, [webcamRef, trend, mode, pauseIfNeeded, isReviewing]);
+  }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
 
   const finish = () => {
     setDone(true);
@@ -191,11 +207,17 @@ export function PracticeSession({ trend, mode }: Props) {
   };
 
   const handleLoop = () => {
+    if (result) return;
     clearCoaching();
     if (isFull) {
+      if (replayPart && replayPart.endMs < trend.durationMs) {
+        setResumeAtMs(replayPart.endMs);
+        return;
+      }
+      setResumeAtMs(trend.durationMs);
       setResult({
-        final: roundScore(averageScore(scoresRef.current)),
-        moves: trend.moves.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
+        final: roundScore(averageScore(bucketsRef.current.flat())),
+        moves: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
       return;
     }
@@ -216,6 +238,7 @@ export function PracticeSession({ trend, mode }: Props) {
     setCompletedParts([]);
     setMoveIndex(0);
     setLiveMove(0);
+    setResumeAtMs(0);
     setDone(false);
     setResult(null);
     replayAttempt();
@@ -265,7 +288,7 @@ export function PracticeSession({ trend, mode }: Props) {
             videoRef={dancerRef}
             onLoop={handleLoop}
             loop={!isFull}
-            autoStart={started}
+            autoStart={started && !result}
             highlightedLimb={coaching?.limb}
           />
         </div>
@@ -288,7 +311,9 @@ export function PracticeSession({ trend, mode }: Props) {
       )}
 
       <div className="grid grid-cols-3 items-center gap-4">
-        <span className="text-sm text-muted-foreground">{`Move ${shownMove + 1} of ${moves.length}`}</span>
+        <span className="text-sm text-muted-foreground">
+          {`${isFull ? "Part" : "Move"} ${shownMove + 1} of ${moves.length}`}
+        </span>
         <span className="min-h-[2rem] text-center text-2xl font-semibold">{showNice ? "Nice!" : null}</span>
         <Button
           variant="outline"
@@ -362,7 +387,7 @@ export function PracticeSession({ trend, mode }: Props) {
           <p className="text-3xl font-semibold">{`Final score ${scoreText(result.final)}`}</p>
           <ul className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
             {result.moves.map((score, i) => (
-              <li key={i}>{`Move ${i + 1} · ${scoreText(score)}`}</li>
+              <li key={i}>{`Part ${i + 1} · ${scoreText(score)}`}</li>
             ))}
           </ul>
           <Button onClick={restart}>Try again</Button>

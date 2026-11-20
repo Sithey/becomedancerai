@@ -7,20 +7,26 @@ const REVIEW_MS = 8000;
 export type CoachingReplay = PoseCorrection & {
   phase: "review" | "replay";
   score: number;
+  partIndex?: number;
 };
 
-export function useCoachingReplay(onReplay: () => void) {
+export function useCoachingReplay(onReplay: (partIndex?: number) => void) {
   const [coaching, setCoaching] = useState<CoachingReplay | null>(null);
   const active = useRef<CoachingReplay | null>(null);
 
   const pauseIfNeeded = useCallback(
-    (video: HTMLVideoElement, score: number, getCorrection: () => PoseCorrection | null) => {
+    (
+      video: HTMLVideoElement,
+      score: number,
+      getCorrection: () => PoseCorrection | null,
+      partIndex?: number,
+    ) => {
       if (active.current || score >= PAUSE_SCORE) return;
       const correction = getCorrection();
       if (!correction) return;
 
       video.pause();
-      const review: CoachingReplay = { ...correction, score: Math.floor(score), phase: "review" };
+      const review: CoachingReplay = { ...correction, score: Math.floor(score), phase: "review", partIndex };
       active.current = review;
       setCoaching(review);
     },
@@ -33,7 +39,7 @@ export function useCoachingReplay(onReplay: () => void) {
     const next: CoachingReplay = { ...review, phase: "replay" };
     active.current = next;
     setCoaching(next);
-    onReplay();
+    onReplay(review.partIndex);
   }, [onReplay]);
 
   const clearCoaching = useCallback(() => {
@@ -41,7 +47,7 @@ export function useCoachingReplay(onReplay: () => void) {
     setCoaching(null);
   }, []);
 
-  const isReviewing = useCallback(() => active.current?.phase === "review", []);
+  const getCoaching = useCallback(() => active.current, []);
 
   useEffect(() => {
     if (coaching?.phase !== "review") return;
@@ -51,5 +57,5 @@ export function useCoachingReplay(onReplay: () => void) {
     return () => window.clearTimeout(timeout);
   }, [coaching, replay]);
 
-  return { coaching, pauseIfNeeded, replay, clearCoaching, isReviewing };
+  return { coaching, pauseIfNeeded, replay, clearCoaching, getCoaching };
 }
