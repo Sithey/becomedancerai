@@ -4,10 +4,13 @@ import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachingTip } from "@/components/dance/coaching-tip";
+import { Confetti } from "@/components/dance/confetti";
+import { CountIn } from "@/components/dance/count-in";
 import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
 import { drawLearnerPose } from "@/components/dance/draw-learner-pose";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { fullRunParts, isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
+import { RunResult } from "@/components/dance/run-result";
 import { useCoachingReplay } from "@/components/dance/use-coaching-replay";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -27,7 +30,7 @@ const SPEEDS = [0.5, 0.75, 1];
 const UI_UPDATE_MS = 250;
 
 type Props = { trend: TrendData; mode: "moves" | "full" };
-type RunResult = { final: number | null; moves: (number | null)[] };
+type FullRunResult = { final: number | null; parts: (number | null)[] };
 
 function moveIndexAt(moves: Move[], tMs: number): number {
   const last = moves.length - 1;
@@ -37,7 +40,6 @@ function moveIndexAt(moves: Move[], tMs: number): number {
 }
 
 const roundScore = (avg: number | null) => (avg === null ? null : Math.round(avg));
-const scoreText = (score: number | null) => (score === null ? "–" : String(score));
 
 export function PracticeSession({ trend, mode }: Props) {
   const isFull = mode === "full";
@@ -55,11 +57,13 @@ export function PracticeSession({ trend, mode }: Props) {
   const [speed, setSpeed] = useState(0.75);
   const [mirrored, setMirrored] = useState(true);
   const [runKey, setRunKey] = useState(0);
-  const [result, setResult] = useState<RunResult | null>(null);
+  const [result, setResult] = useState<FullRunResult | null>(null);
   const [resumeAtMs, setResumeAtMs] = useState(0);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
+  const [countingIn, setCountingIn] = useState(false);
 
   // Practice tracks one loop. Full Run keeps each part's scores across retries.
   const scoresRef = useRef<number[]>([]);
@@ -188,9 +192,10 @@ export function PracticeSession({ trend, mode }: Props) {
     };
   }, [webcamRef, trend, isFull, runParts, pauseIfNeeded, getCoaching]);
 
-  const finish = () => {
+  const finish = (allPassed: boolean) => {
     setDone(true);
     dancerRef.current?.pause();
+    if (allPassed) setShowConfetti(true);
   };
 
   const clearPassedPrompt = () => {
@@ -198,13 +203,32 @@ export function PracticeSession({ trend, mode }: Props) {
     setShowNice(false);
   };
 
-  const nextMove = () => {
+  const nextMove = (passedCurrent = false) => {
     clearPassedPrompt();
     clearCoaching();
     scoresRef.current = [];
-    if (moveIndex === moves.length - 1) finish();
-    else setMoveIndex(moveIndex + 1);
+    if (moveIndex === moves.length - 1) {
+      finish(passed.every((didPass, i) => didPass || (passedCurrent && i === moveIndex)));
+    } else {
+      setMoveIndex((prev) => prev + 1);
+      setCountingIn(started);
+    }
   };
+
+  const skipMove = () => {
+    dancerRef.current?.pause();
+    nextMove();
+  };
+
+  const handleStart = () => {
+    setStarted(true);
+    setCountingIn(true);
+  };
+
+  const handleCountInDone = useCallback(() => {
+    scoresRef.current = [];
+    setCountingIn(false);
+  }, []);
 
   const handleLoop = () => {
     if (result) return;
@@ -217,8 +241,9 @@ export function PracticeSession({ trend, mode }: Props) {
       setResumeAtMs(trend.durationMs);
       setResult({
         final: roundScore(averageScore(bucketsRef.current.flat())),
-        moves: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
+        parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
+      setShowConfetti(true);
       return;
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
@@ -229,10 +254,11 @@ export function PracticeSession({ trend, mode }: Props) {
     );
     dancerRef.current?.pause();
     setShowNice(true);
-    advanceTimer.current = window.setTimeout(nextMove, 1000);
+    advanceTimer.current = window.setTimeout(() => nextMove(true), 1000);
   };
 
   const restart = () => {
+    dancerRef.current?.pause();
     clearPassedPrompt();
     clearCoaching();
     setCompletedParts([]);
@@ -241,21 +267,20 @@ export function PracticeSession({ trend, mode }: Props) {
     setResumeAtMs(0);
     setDone(false);
     setResult(null);
-    replayAttempt();
-  };
-
-  const reset = () => {
-    dancerRef.current?.pause();
     setStarted(false);
-    restart();
+    setCountingIn(false);
+    setShowConfetti(false);
+    replayAttempt();
   };
 
   const changePartLength = (useShorterParts: boolean) => {
     const nextMoves = useShorterParts ? shortMoves : trend.moves;
+    dancerRef.current?.pause();
     clearPassedPrompt();
     clearCoaching();
     setShorterParts(useShorterParts);
     setMoveIndex(Math.max(0, moveIndexAt(nextMoves, range.startMs)));
+    setCountingIn(started);
     replayAttempt();
   };
 
@@ -277,34 +302,37 @@ export function PracticeSession({ trend, mode }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-6">
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <DancerPanel
-            key={runKey}
-            trend={trend}
-            range={range}
-            speed={coaching?.phase === "replay" ? replaySpeed : normalSpeed}
-            mirrored={mirrored}
-            videoRef={dancerRef}
-            onLoop={handleLoop}
-            loop={!isFull}
-            autoStart={started && !result}
-            highlightedLimb={coaching?.limb}
-          />
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <DancerPanel
+              key={runKey}
+              trend={trend}
+              range={range}
+              speed={coaching?.phase === "replay" ? replaySpeed : normalSpeed}
+              mirrored={mirrored}
+              videoRef={dancerRef}
+              onLoop={handleLoop}
+              loop={!isFull}
+              autoStart={started && !countingIn && !result}
+              highlightedLimb={coaching?.limb}
+            />
+          </div>
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <LearnerPanel
+              videoRef={webcamRef}
+              canvasRef={learnerCanvasRef}
+              status={webcamStatus}
+              notice={learnerNotice}
+            />
+          </div>
         </div>
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <LearnerPanel
-            videoRef={webcamRef}
-            canvasRef={learnerCanvasRef}
-            status={webcamStatus}
-            notice={learnerNotice}
-          />
-        </div>
+        {countingIn && <CountIn onDone={handleCountInDone} />}
       </div>
 
       {!started && (
         <div className="flex justify-center">
-          <Button size="lg" disabled={!ready} onClick={() => setStarted(true)}>
+          <Button size="lg" disabled={!ready} onClick={handleStart}>
             {ready ? "Start" : "Getting ready…"}
           </Button>
         </div>
@@ -320,7 +348,7 @@ export function PracticeSession({ trend, mode }: Props) {
           size="sm"
           className="justify-self-end"
           disabled={!started && moveIndex === 0 && !done}
-          onClick={reset}
+          onClick={restart}
         >
           Reset
         </Button>
@@ -356,11 +384,16 @@ export function PracticeSession({ trend, mode }: Props) {
           </ToggleGroup>
           {mirrorToggle}
           {shortMoves.length > trend.moves.length && (
-            <Toggle variant="outline" pressed={shorterParts} onPressedChange={changePartLength}>
+            <Toggle
+              variant="outline"
+              pressed={shorterParts}
+              onPressedChange={changePartLength}
+              disabled={countingIn}
+            >
               Shorter parts
             </Toggle>
           )}
-          <Button variant="outline" onClick={nextMove}>
+          <Button variant="outline" onClick={skipMove} disabled={countingIn}>
             Skip move
           </Button>
         </div>
@@ -368,7 +401,9 @@ export function PracticeSession({ trend, mode }: Props) {
 
       {!isFull && done && (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-semibold">Now do the full dance</p>
+          <p className="text-xl font-semibold">
+            {passed.every(Boolean) ? "All moves passed!" : "Now do the full dance"}
+          </p>
           <div className="flex gap-3">
             <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
               Full run
@@ -383,16 +418,15 @@ export function PracticeSession({ trend, mode }: Props) {
       {isFull && !result && <div className="flex justify-center">{mirrorToggle}</div>}
 
       {isFull && result && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-3xl font-semibold">{`Final score ${scoreText(result.final)}`}</p>
-          <ul className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-            {result.moves.map((score, i) => (
-              <li key={i}>{`Part ${i + 1} · ${scoreText(score)}`}</li>
-            ))}
-          </ul>
-          <Button onClick={restart}>Try again</Button>
-        </div>
+        <RunResult
+          trendId={trend.id}
+          final={result.final}
+          parts={result.parts}
+          onRestart={restart}
+        />
       )}
+
+      {showConfetti && <Confetti />}
     </div>
   );
 }
