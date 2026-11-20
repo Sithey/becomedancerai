@@ -2,6 +2,11 @@ import { PASS_SCORE } from "./pose/config";
 
 export type ResultSummary = { title: string; detail: string };
 
+// An unscored part (learner out of frame) is not a pass either.
+export function allPartsPassed(parts: (number | null)[]): boolean {
+  return parts.length > 0 && parts.every((score) => score !== null && score >= PASS_SCORE);
+}
+
 export function resultSummary(parts: (number | null)[]): ResultSummary {
   const scored = parts.filter((score): score is number => score !== null);
   if (scored.length === 0) {
@@ -10,11 +15,10 @@ export function resultSummary(parts: (number | null)[]): ResultSummary {
       detail: "We couldn't see you during the run. Check your framing and try again.",
     };
   }
-  const weak = scored.filter((score) => score < PASS_SCORE).length;
-  // An unscored part (learner out of frame) is not a pass either.
-  if (weak === 0 && scored.length === parts.length) {
+  if (allPartsPassed(parts)) {
     return { title: "You've got this trend.", detail: "Every part passed. Time to film your version." };
   }
+  const weak = scored.filter((score) => score < PASS_SCORE).length;
   if (weak === 0) {
     return { title: "Almost there.", detail: "Some parts couldn't be scored. Stay in frame and try again." };
   }

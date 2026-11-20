@@ -26,6 +26,7 @@ import { LearnerHistory, limbMotion, scoreSegment, type SegmentScore } from "@/l
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
 import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
+import { allPartsPassed } from "@/lib/result-summary";
 import {
   getProgress,
   resumeMoveIndex,
@@ -295,11 +296,9 @@ export function PracticeSession({ trend, mode }: Props) {
       if (finalScore !== null) {
         saveRunScore(trend.id, finalScore);
       }
-      setResult({
-        final: finalScore,
-        parts: runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
-      });
-      setShowConfetti(true);
+      const parts = runParts.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? [])));
+      setResult({ final: finalScore, parts });
+      if (allPartsPassed(parts)) setShowConfetti(true);
       return;
     }
     const loopScore = roundScore(averageScore(scoresRef.current));
