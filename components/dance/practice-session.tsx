@@ -4,7 +4,7 @@ import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CoachingTip } from "@/components/dance/coaching-tip";
-import { DancerPanel } from "@/components/dance/dancer-panel";
+import { DancerPanel, dancerPoseAt } from "@/components/dance/dancer-panel";
 import { drawMatchingJoints } from "@/components/dance/draw-matching-joints";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { isPartPassed, shorterPracticeParts } from "@/components/dance/practice-parts";
@@ -13,12 +13,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { comparePoses } from "@/lib/pose/compare";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, bestMatch, isPassed } from "@/lib/pose/scoring";
 import { correctionFor, limbDirections } from "@/lib/pose/tips";
-import type { Move, TrendData } from "@/lib/pose/types";
+import type { LimbScores, Move, TrendData } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
 import { cn } from "cn";
 
@@ -77,7 +78,7 @@ export function PracticeSession({ trend, mode }: Props) {
     bucketsRef.current = [];
     setRunKey((k) => k + 1);
   }, []);
-  const { coaching, pauseIfNeeded, replay, clearCoaching } = useCoachingReplay(replayAttempt);
+  const { coaching, pauseIfNeeded, replay, clearCoaching, isReviewing } = useCoachingReplay(replayAttempt);
 
   const fullRange = useMemo(() => ({ startMs: 0, endMs: trend.durationMs }), [trend.durationMs]);
   const shortMoves = useMemo(() => shorterPracticeParts(trend.moves), [trend.moves]);
@@ -112,20 +113,26 @@ export function PracticeSession({ trend, mode }: Props) {
 
       const dancer = dancerRef.current;
       let match: ReturnType<typeof bestMatch> = null;
-      if (dancer && !dancer.paused && !dancer.seeking && dancer.readyState >= 2) {
+      let reviewScores: LimbScores | undefined;
+      if (dancer && !dancer.seeking && dancer.readyState >= 2) {
         const tMs = dancer.currentTime * 1000;
-        match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
-        if (match && match.score !== null) {
-          scoresRef.current.push(match.score);
-          if (mode === "full") {
-            const i = moveIndexAt(trend.moves, tMs);
-            if (i !== -1) (bucketsRef.current[i] ??= []).push(match.score);
+        if (!dancer.paused) {
+          match = bestMatch(learner, learnerSize, trend.poses, trend.sampleMs, tMs, dancerSize);
+          if (match && match.score !== null) {
+            scoresRef.current.push(match.score);
+            if (mode === "full") {
+              const i = moveIndexAt(trend.moves, tMs);
+              if (i !== -1) (bucketsRef.current[i] ??= []).push(match.score);
+            }
           }
+        } else if (learner && isReviewing()) {
+          const frozenPose = dancerPoseAt(trend, tMs);
+          if (frozenPose) reviewScores = comparePoses(learner, learnerSize, frozenPose, dancerSize).limbs;
         }
       }
 
       drawSkeleton(ctx, learner, { color: primary });
-      drawMatchingJoints(ctx, learner, match?.limbs, matchColor);
+      drawMatchingJoints(ctx, learner, match?.limbs ?? reviewScores, matchColor);
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
@@ -164,7 +171,7 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelAnimationFrame(raf);
       landmarker?.close();
     };
-  }, [webcamRef, trend, mode, pauseIfNeeded]);
+  }, [webcamRef, trend, mode, pauseIfNeeded, isReviewing]);
 
   const finish = () => {
     setDone(true);

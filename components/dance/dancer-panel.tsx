@@ -18,6 +18,11 @@ type Props = {
   highlightedLimb?: LimbName;
 };
 
+export function dancerPoseAt(trend: TrendData, timeMs: number) {
+  const index = Math.min(trend.poses.length - 1, Math.max(0, Math.round(timeMs / trend.sampleMs)));
+  return trend.poses[index]?.pose ?? null;
+}
+
 export function DancerPanel({
   trend,
   range,
@@ -83,7 +88,6 @@ export function DancerPanel({
     if (!video || !canvas || !ctx) return;
     const color = themeColor("primary");
     const highlight = themeColor("destructive");
-    const lastIndex = trend.poses.length - 1;
 
     const handleEnd = () => {
       if (finishedRef.current) return;
@@ -112,9 +116,8 @@ export function DancerPanel({
 
     let raf = requestAnimationFrame(function frame() {
       const ms = video.currentTime * 1000;
-      const index = Math.min(lastIndex, Math.max(0, Math.round(ms / trend.sampleMs)));
       const limb = highlightRef.current;
-      drawSkeleton(ctx, trend.poses[index]?.pose ?? null, {
+      drawSkeleton(ctx, dancerPoseAt(trend, ms), {
         color,
         limbColors: limb ? { [limb]: highlight } : undefined,
       });

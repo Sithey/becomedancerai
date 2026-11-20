@@ -26,7 +26,7 @@ export function drawMatchingJoints(
     if (!joint || !limbs.every((limb) => (scores[limb] ?? 0) >= PASS_SCORE)) continue;
 
     ctx.beginPath();
-    ctx.arc(joint.x * width, joint.y * height, height / 120, 0, Math.PI * 2);
+    ctx.arc(joint.x * width, joint.y * height, height / 80, 0, Math.PI * 2);
     ctx.fill();
   }
 }

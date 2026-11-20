@@ -41,6 +41,8 @@ export function useCoachingReplay(onReplay: () => void) {
     setCoaching(null);
   }, []);
 
+  const isReviewing = useCallback(() => active.current?.phase === "review", []);
+
   useEffect(() => {
     if (coaching?.phase !== "review") return;
     const timeout = window.setTimeout(() => {
@@ -49,5 +51,5 @@ export function useCoachingReplay(onReplay: () => void) {
     return () => window.clearTimeout(timeout);
   }, [coaching, replay]);
 
-  return { coaching, pauseIfNeeded, replay, clearCoaching };
+  return { coaching, pauseIfNeeded, replay, clearCoaching, isReviewing };
 }
