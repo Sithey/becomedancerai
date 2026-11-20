@@ -23,7 +23,7 @@ export function HeaderBar({ pathname }: { pathname: string | null }) {
       <div className="mx-auto flex w-full max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:gap-4 sm:px-8 sm:py-4">
         <Link href="/" className="flex items-center gap-2.5">
           <LogoMark className="size-7 text-primary" />
-          <span className="font-heading text-xl font-bold tracking-tight">Dance Tutor</span>
+          <span className="font-heading text-xl font-bold tracking-tight">BecomeDancerAI</span>
         </Link>
         <nav aria-label="Main" className="flex flex-wrap items-center gap-2">
           {NAV.map((item) => (

@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dance Tutor",
+  title: "BecomeDancerAI",
   description: "Learn any TikTok dance, move by move.",
 };
 
