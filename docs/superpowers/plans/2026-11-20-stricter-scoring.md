@@ -138,3 +138,15 @@
 - [ ] **Step 3: Verify** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build` all pass.
 - [ ] **Step 4: Verify on "bisou"**: rerun the scratch evaluation with `scoreSegment` (learners: exact, 0.3/0.6 s late, jitter, standing still, wrong part, mirrored). Expected: exact and late 4/4, standing still 0/4.
 - [ ] **Step 5: Commit** `feat: practice scores the last second of movement (#21)`
+
+### Task 4: Hands, head and torso; stricter values (design update)
+
+**Files:** `lib/pose/types.ts`, `lib/pose/landmarks.ts`, `lib/pose/config.ts`, `lib/pose/tips.ts`, `lib/pose/draw.ts`, `lib/pose/test-poses.ts`, tests in `compare.test.ts`, `segment.test.ts`, `tips.test.ts`.
+
+**Interfaces:** `LimbName` gains `"leftHand" | "rightHand" | "head" | "torso"`. `LIMBS: Record<LimbName, [Endpoint, Endpoint]>` with `type Endpoint = number | readonly [number, number]` (a pair = midpoint, visibility = min). `draw.ts` maps only numeric pairs to drawn connections.
+
+- [ ] **Step 1: Tests first.** `compare.test.ts`: 45° → 25, 12° → 100, identical poses score on 12 limbs, legs hidden leaves arms + hands + head (torso needs hips). New `landmarks` test: head direction from shoulders midpoint to nose; torso from hips midpoint to shoulders midpoint. `tips.test.ts`: `{ leftHand: 10 }` → "Watch your left hand", `{ torso: 10 }` → "Watch your torso". `test-poses.ts` gets nose (0.5, 0.2) and index fingers 19 (0.585, 0.58), 20 (0.415, 0.58); `segment.test.ts` fixtures move the index finger with the wrist.
+- [ ] **Step 2: Run** `npx vitest run lib/pose`. Expected: FAIL.
+- [ ] **Step 3: Implement** the types, `LIMBS`, midpoint support in `limbDirection`, tips, draw mapping, config values (`FULL_SCORE_DEG = 15`, `ZERO_SCORE_DEG = 55`, `LIMB_WEIGHT_BASE = 0.1`).
+- [ ] **Step 4: Verify** `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`; rerun the "bisou" evaluation (correct and late learners must still pass 4/4).
+- [ ] **Step 5: Commit** `feat: score hands, head and torso with stricter angles (#21)`

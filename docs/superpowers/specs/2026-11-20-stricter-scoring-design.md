@@ -85,3 +85,21 @@ exported for other callers.
 
 Measured on learners simulated from the dancer's own poses. Real bodies and cameras differ:
 tune `FULL_SCORE_DEG`, `ZERO_SCORE_DEG`, `MOVEMENT_FLOOR` and `PASS_SCORE` with real people.
+
+## Update: more body parts (approved by Raphael, 2026-11-20)
+
+Raphael tested the PR on "bisou" and still got 80 at times on a dance that is hard to copy.
+Measured on "bisou": the hands move the most (wrist → index finger ±69° left, ±59° right) and
+were not scored at all.
+
+- New segments: `leftHand` (15 → 19), `rightHand` (16 → 20), `head` (shoulders midpoint →
+  nose 0), `torso` (hips midpoint → shoulders midpoint). An endpoint can be the midpoint of two
+  landmarks; its visibility is the lower of the two.
+- Feet stay out: often out of frame on a laptop webcam (left foot visible 41% even in the video).
+- `LIMB_WEIGHT_BASE` 0.2 → 0.1, so still segments (head, torso in most dances) don't add free
+  points.
+- Stricter angles: `FULL_SCORE_DEG` 20 → 15, `ZERO_SCORE_DEG` 70 → 55.
+- Tips: "Watch your left hand", "Watch your right hand", "Watch your head", "Watch your torso".
+- Red limbs: hands turn red on the skeleton (15–19 and 16–20 are drawn connections); head and
+  torso have no drawn line, so only the tip names them.
+- Risk: MediaPipe's hand points are noisier than arm points at 2–3 m.
