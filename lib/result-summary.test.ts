@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { resultSummary } from "./result-summary";
+import { applyPartRetry, resultSummary, summarizeAttempt } from "./result-summary";
 
 test("every part passed", () => {
   expect(resultSummary([91, 75, 80])).toEqual({
@@ -26,4 +26,31 @@ test("nothing scored is not a success", () => {
 
 test("unscored parts don't count as passed", () => {
   expect(resultSummary([91, null]).title).toBe("Almost there.");
+});
+
+test("a session keeps low scores with their own move and leaves missing scores blank", () => {
+  const correction = { limb: "head", problem: "Your head was out of position.", tip: "Watch your head" } as const;
+  const moves = [
+    { startMs: 0, endMs: 1000 },
+    { startMs: 1000, endMs: 2000 },
+    { startMs: 2000, endMs: 3000 },
+  ];
+  expect(summarizeAttempt(moves, [
+    { timeMs: 500, score: 30, correction },
+    { timeMs: 900, score: 50 },
+    { timeMs: 1000, score: 90 },
+  ])).toEqual({
+    final: 57,
+    parts: [{ score: 40, correction }, { score: 90 }, { score: null }],
+  });
+});
+
+test("a retry updates only its own move and preserves the original session score", () => {
+  const result = { final: 50, parts: [{ score: 40 }, { score: 60 }] };
+  expect(applyPartRetry(result, 0, { score: null })).toBe(result);
+  expect(applyPartRetry(result, 0, { score: 35 })).toBe(result);
+  expect(applyPartRetry(result, 0, { score: 80 })).toEqual({
+    final: 50,
+    parts: [{ score: 80 }, { score: 60 }],
+  });
 });
