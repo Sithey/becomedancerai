@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { LearnView } from "@/components/dance/learn-view";
+import { StepTabs } from "@/components/dance/step-tabs";
+import { formatDuration } from "@/components/dance/trend-card";
 import { getTrend } from "@/lib/server/trends";
 
 async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
@@ -10,9 +12,19 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
   await connection();
   const trend = await getTrend(id);
   if (!trend) notFound();
+  const moves = `${trend.moves.length} ${trend.moves.length === 1 ? "move" : "moves"}`;
   return (
     <>
-      <h1 className="text-2xl font-semibold">{trend.title}</h1>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Library
+          </Link>
+          <h1 className="font-heading text-5xl font-bold tracking-tight">{trend.title}</h1>
+          <span className="text-muted-foreground">{`${formatDuration(trend.durationMs)} · ${moves} · Learn one move at a time`}</span>
+        </div>
+        <StepTabs trendId={trend.id} current="learn" />
+      </div>
       <LearnView trend={trend} />
     </>
   );
@@ -20,10 +32,7 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
 
 export default function LearnPage({ params }: PageProps<"/trends/[id]">) {
   return (
-    <main className="mx-auto w-full flex min-h-screen max-w-3xl flex-col gap-6 bg-background p-8 text-foreground">
-      <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Library
-      </Link>
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-7 px-8 pt-8 pb-16">
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <LearnLoader params={params} />
       </Suspense>

@@ -31,7 +31,7 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice, framing }: P
   const message = status === "ready" ? (notice ?? framing?.message) : STATUS_COPY[status];
 
   return (
-    <div className="relative aspect-[9/16] overflow-hidden rounded-xl bg-muted">
+    <div className="relative aspect-[9/16] overflow-hidden rounded-3xl border border-border bg-card">
       <video
         ref={videoRef}
         muted
