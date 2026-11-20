@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { SAMPLE_MS } from "@/lib/pose/config";
+import { MIN_DETECTION_RATE, SAMPLE_MS } from "@/lib/pose/config";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
 import { extractPoses } from "@/lib/pose/extract";
 import { splitMoves } from "@/lib/pose/split";
 import type { Move, PoseFrame } from "@/lib/pose/types";
+
+const MAX_DURATION_MS = 30_000;
 
 type Result = {
   frames: PoseFrame[];
@@ -40,10 +42,29 @@ export function AddTrendForm() {
   const [error, setError] = useState<string | null>(null);
 
   const [objectUrl, setObjectUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const extractRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  function resetForm() {
+    abortRef.current?.abort();
+    setFile(null);
+    setTitle("");
+    setError(null);
+    setResult(null);
+    setProgress(null);
+    setProcessing(false);
+    setSaving(false);
+    if (objectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      setObjectUrl(null);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   useEffect(() => {
     return () => abortRef.current?.abort();
@@ -99,7 +120,20 @@ export function AddTrendForm() {
     try {
       await loadVideo(video, url);
       const durationMs = Math.round(video.duration * 1000);
+      if (durationMs > MAX_DURATION_MS) {
+        setError("Videos must be 30 seconds or shorter");
+        setProgress(null);
+        return;
+      }
       const frames = await extractPoses(video, setProgress, controller.signal);
+      const detected = frames.filter((f) => f.pose !== null).length;
+      if (frames.length === 0 || detected / frames.length < MIN_DETECTION_RATE) {
+        setError(
+          "We couldn't find a dancer in this video. Try one with a single dancer, full body visible.",
+        );
+        setProgress(null);
+        return;
+      }
       setResult({
         frames,
         moves: splitMoves(frames, durationMs),
@@ -158,16 +192,50 @@ export function AddTrendForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="video">Video (mp4)</Label>
-        <Input id="video" type="file" accept="video/mp4" disabled={busy} onChange={onFileChange} />
+        <Input
+          ref={fileInputRef}
+          id="video"
+          type="file"
+          accept="video/mp4"
+          disabled={busy}
+          onChange={onFileChange}
+        />
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor="title">Title</Label>
-        <Input id="title" value={title} disabled={busy} onChange={(e) => setTitle(e.target.value)} />
+        <Input
+          id="title"
+          value={title}
+          maxLength={80}
+          disabled={busy}
+          onChange={(e) => setTitle(e.target.value)}
+        />
       </div>
 
-      <Button className="self-start" disabled={busy || !file || !title.trim()} onClick={process}>
-        Process
-      </Button>
+      {error && (
+        <div className="flex flex-col items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4 text-destructive">
+          <p className="text-sm font-medium">{error}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={resetForm}
+            className="border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            Choose another video
+          </Button>
+        </div>
+      )}
+
+      {!result && (
+        <Button
+          className="self-start"
+          disabled={busy || !file || !title.trim() || Boolean(error)}
+          onClick={process}
+        >
+          Process
+        </Button>
+      )}
 
       {progress !== null && !result && (
         <div className="flex flex-col gap-2">
@@ -203,8 +271,6 @@ export function AddTrendForm() {
           </Button>
         </div>
       )}
-
-      {error && <p className="text-sm text-destructive">{error}</p>}
     </div>
   );
 }
