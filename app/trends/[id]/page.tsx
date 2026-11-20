@@ -20,7 +20,7 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
 
 export default function LearnPage({ params }: PageProps<"/trends/[id]">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-6 bg-background p-8 text-foreground">
+    <main className="mx-auto w-full flex min-h-screen max-w-3xl flex-col gap-6 bg-background p-8 text-foreground">
       <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
         ← Library
       </Link>

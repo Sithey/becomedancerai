@@ -36,7 +36,7 @@ async function TrendsGrid() {
 
 export default function Home() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-6 bg-background p-8 text-foreground">
+    <main className="mx-auto w-full flex min-h-screen max-w-4xl flex-col gap-6 bg-background p-8 text-foreground">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-semibold">Dance Tutor</h1>
         <Link href="/trends/new" className={buttonVariants()}>

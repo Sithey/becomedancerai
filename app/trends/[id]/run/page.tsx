@@ -23,7 +23,7 @@ async function RunLoader({ params }: { params: Promise<{ id: string }> }) {
 
 export default function RunPage({ params }: PageProps<"/trends/[id]/run">) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 bg-background p-8 text-foreground">
+    <main className="mx-auto w-full flex min-h-screen max-w-5xl flex-col gap-6 bg-background p-8 text-foreground">
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
         <RunLoader params={params} />
       </Suspense>
