@@ -20,3 +20,4 @@ export const LIMB_WEIGHT_DEG = 20;
 export const MOTION_HALF_WINDOW_MS = 1000;
 export const MOVING_LIMB_DEG = 15;
 export const MOVEMENT_FLOOR = 0.4;
+export const MIN_SEGMENT_PX = 30;

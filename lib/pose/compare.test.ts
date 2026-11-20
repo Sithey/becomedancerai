@@ -76,6 +76,13 @@ describe("comparePoses", () => {
     expect(limbDirection(withPoint(standingPose(), 12, 0.45, 0.3, 0.1), "head", SQUARE)).toBeNull();
   });
 
+  test("segments shorter than 30 px are too small to measure", () => {
+    const tinyHand = withPoint(standingPose(), 19, 0.58, 0.56);
+    expect(limbDirection(tinyHand, "leftHand", SQUARE)).toBeNull();
+    expect(comparePoses(tinyHand, SQUARE, standingPose(), SQUARE).limbs.leftHand).toBeUndefined();
+    expect(limbDirection(withPoint(standingPose(), 19, 0.58, 0.575), "leftHand", SQUARE)).not.toBeNull();
+  });
+
   test("nothing visible gives a null score", () => {
     const hidden = standingPose().map((l) => ({ ...l, v: 0 }));
     expect(comparePoses(hidden, SQUARE, standingPose(), SQUARE).score).toBeNull();

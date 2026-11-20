@@ -1,4 +1,4 @@
-import { MIN_VISIBILITY } from "./config";
+import { MIN_SEGMENT_PX, MIN_VISIBILITY } from "./config";
 import type { FrameSize, Landmark, LimbName, Pose, Vec } from "./types";
 
 // A pair is the midpoint of two landmarks (e.g. between the shoulders).
@@ -27,17 +27,28 @@ function point(pose: Pose, end: Endpoint): Landmark | null {
   return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, v: Math.min(a.v, b.v) };
 }
 
-// Directions are computed in pixel space: normalized coordinates would distort angles on non-square frames.
-export function limbDirection(pose: Pose, limb: LimbName, size: FrameSize): Vec | null {
+// Pixel vector of a visible limb. Pixel space: normalized coordinates would distort angles on non-square frames.
+function limbVector(pose: Pose, limb: LimbName, size: FrameSize): Vec | null {
   const [from, to] = LIMBS[limb];
   const a = point(pose, from);
   const b = point(pose, to);
   if (!a || !b || a.v < MIN_VISIBILITY || b.v < MIN_VISIBILITY) return null;
-  const dx = (b.x - a.x) * size.width;
-  const dy = (b.y - a.y) * size.height;
-  const length = Math.hypot(dx, dy);
-  if (length === 0) return null;
-  return { x: dx / length, y: dy / length };
+  return { x: (b.x - a.x) * size.width, y: (b.y - a.y) * size.height };
+}
+
+export function limbLengthPx(pose: Pose, limb: LimbName, size: FrameSize): number | null {
+  const v = limbVector(pose, limb, size);
+  return v ? Math.hypot(v.x, v.y) : null;
+}
+
+// A few pixels of landmark error swing the angle of a short segment (a hand far from the webcam) by
+// tens of degrees, so segments under MIN_SEGMENT_PX aren't measured.
+export function limbDirection(pose: Pose, limb: LimbName, size: FrameSize): Vec | null {
+  const v = limbVector(pose, limb, size);
+  if (!v) return null;
+  const length = Math.hypot(v.x, v.y);
+  if (length < MIN_SEGMENT_PX) return null;
+  return { x: v.x / length, y: v.y / length };
 }
 
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
