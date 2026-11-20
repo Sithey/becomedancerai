@@ -18,6 +18,7 @@ import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { comparePoses } from "@/lib/pose/compare";
 import { themeColor } from "@/lib/pose/draw";
+import { FRAMED, framingState, sameFraming, type Framing } from "@/lib/pose/framing-state";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
 import { averageScore, isPassed } from "@/lib/pose/scoring";
@@ -65,6 +66,7 @@ export function PracticeSession({ trend, mode }: Props) {
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
   const [countingIn, setCountingIn] = useState(false);
+  const [framing, setFraming] = useState<Framing>(FRAMED);
 
   // Practice tracks one loop. Full Run keeps each part's scores across retries.
   const scoresRef = useRef<number[]>([]);
@@ -110,6 +112,7 @@ export function PracticeSession({ trend, mode }: Props) {
     let raf = 0;
     let lastWebcamTime = -1;
     let lastUiUpdate = -Infinity;
+    let lastSeen = performance.now();
     const primary = themeColor("primary");
     const learnerCanvas = learnerCanvasRef.current;
     const matchColor = learnerCanvas ? getComputedStyle(learnerCanvas).color : "";
@@ -129,6 +132,7 @@ export function PracticeSession({ trend, mode }: Props) {
       // The raw webcam frame goes to the model (mirroring is CSS only), so its left/right stay anatomical.
       const landmarks = landmarker.detectForVideo(webcam, now).landmarks[0];
       const learner = landmarks ? fromMediaPipe(landmarks) : null;
+      if (learner) lastSeen = now;
       const learnerSize = { width: webcam.videoWidth, height: webcam.videoHeight };
 
       const dancer = dancerRef.current;
@@ -169,6 +173,8 @@ export function PracticeSession({ trend, mode }: Props) {
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
+        const nextFraming = framingState(learner, now - lastSeen);
+        setFraming((prev) => (sameFraming(prev, nextFraming) ? prev : nextFraming));
         if (dancer && learner && match && (!isFull || partIndex !== -1)) {
           const { score, lagMs, limbs } = match;
           pauseIfNeeded(dancer, score, () => {
@@ -337,6 +343,7 @@ export function PracticeSession({ trend, mode }: Props) {
               canvasRef={learnerCanvasRef}
               status={webcamStatus}
               notice={learnerNotice}
+              framing={framing}
             />
           </div>
         </div>
