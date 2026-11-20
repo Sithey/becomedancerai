@@ -28,19 +28,6 @@ function playBeep(freq: number, duration = 0.08) {
   }
 }
 
-function speakCountIn() {
-  try {
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance("5, 6, 7, 8");
-      utterance.rate = 1.2;
-      window.speechSynthesis.speak(utterance);
-    }
-  } catch {
-    // Ignore speech errors
-  }
-}
-
 const STEP_MS = 750;
 
 export function CountIn({ onDone }: Props) {
@@ -49,7 +36,6 @@ export function CountIn({ onDone }: Props) {
   useEffect(() => {
     // Step 3
     playBeep(520);
-    speakCountIn();
 
     const t2 = setTimeout(() => {
       setCount(2);
@@ -69,13 +55,6 @@ export function CountIn({ onDone }: Props) {
       clearTimeout(t2);
       clearTimeout(t1);
       clearTimeout(tDone);
-      try {
-        if (typeof window !== "undefined" && "speechSynthesis" in window) {
-          window.speechSynthesis.cancel();
-        }
-      } catch {
-        // Ignore
-      }
     };
   }, [onDone]);
 
