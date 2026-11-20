@@ -2,7 +2,10 @@
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Confetti } from "@/components/dance/confetti";
+import { CountIn } from "@/components/dance/count-in";
+import { RunResult } from "@/components/dance/run-result";
 import { DancerPanel } from "@/components/dance/dancer-panel";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { Badge } from "@/components/ui/badge";
@@ -51,10 +54,12 @@ export function PracticeSession({ trend, mode }: Props) {
   const [mirrored, setMirrored] = useState(true);
   const [runKey, setRunKey] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const [tip, setTip] = useState<string | null>(null);
   const [liveMove, setLiveMove] = useState(0);
   const [showNice, setShowNice] = useState(false);
+  const [countingIn, setCountingIn] = useState(false);
 
   // Frame scores of the current loop (moves mode) or of the whole run (full mode).
   const scoresRef = useRef<number[]>([]);
@@ -149,13 +154,35 @@ export function PracticeSession({ trend, mode }: Props) {
   const finish = () => {
     setDone(true);
     dancerRef.current?.pause();
+    if (passed.length === trend.moves.length) {
+      setShowConfetti(true);
+    }
   };
 
   const nextMove = () => {
     scoresRef.current = [];
     if (moveIndex === trend.moves.length - 1) finish();
-    else setMoveIndex(moveIndex + 1);
+    else {
+      setMoveIndex((prev) => prev + 1);
+      setCountingIn(true);
+    }
   };
+
+  const skipMove = () => {
+    dancerRef.current?.pause();
+    nextMove();
+  };
+
+  const handleStart = () => {
+    setStarted(true);
+    setCountingIn(true);
+  };
+
+  const handleCountInDone = useCallback(() => {
+    scoresRef.current = [];
+    setCountingIn(false);
+    dancerRef.current?.play();
+  }, []);
 
   const handleLoop = () => {
     if (isFull) {
@@ -163,12 +190,17 @@ export function PracticeSession({ trend, mode }: Props) {
         final: roundScore(averageScore(scoresRef.current)),
         moves: trend.moves.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
+      setShowConfetti(true);
       return;
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
     scoresRef.current = [];
     if (!loopPassed) return;
+    dancerRef.current?.pause();
     setPassed((p) => (p.includes(moveIndex) ? p : [...p, moveIndex]));
+    // Last move: show confetti when all done
+    const allPassed = moveIndex === trend.moves.length - 1;
+    if (allPassed) setShowConfetti(true);
     setShowNice(true);
     setTimeout(() => {
       setShowNice(false);
@@ -186,6 +218,9 @@ export function PracticeSession({ trend, mode }: Props) {
     setResult(null);
     setTip(null);
     setShowNice(false);
+    setShowConfetti(false);
+    setCountingIn(false);
+    setStarted(false);
     setRunKey((k) => k + 1);
   };
 
@@ -205,33 +240,36 @@ export function PracticeSession({ trend, mode }: Props) {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="grid grid-cols-2 gap-6">
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <DancerPanel
-            key={runKey}
-            trend={trend}
-            range={range}
-            speed={isFull ? 1 : speed}
-            mirrored={mirrored}
-            videoRef={dancerRef}
-            onLoop={handleLoop}
-            loop={!isFull}
-            autoStart={started}
-          />
+      <div className="relative">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <DancerPanel
+              key={runKey}
+              trend={trend}
+              range={range}
+              speed={isFull ? 1 : speed}
+              mirrored={mirrored}
+              videoRef={dancerRef}
+              onLoop={handleLoop}
+              loop={!isFull}
+              autoStart={started && !countingIn}
+            />
+          </div>
+          <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
+            <LearnerPanel
+              videoRef={webcamRef}
+              canvasRef={learnerCanvasRef}
+              status={webcamStatus}
+              notice={learnerNotice}
+            />
+          </div>
         </div>
-        <div className="mx-auto w-full max-w-[calc(70vh*9/16)]">
-          <LearnerPanel
-            videoRef={webcamRef}
-            canvasRef={learnerCanvasRef}
-            status={webcamStatus}
-            notice={learnerNotice}
-          />
-        </div>
+        {countingIn && <CountIn onDone={handleCountInDone} />}
       </div>
 
       {!started && (
         <div className="flex justify-center">
-          <Button size="lg" disabled={!ready} onClick={() => setStarted(true)}>
+          <Button size="lg" disabled={!ready} onClick={handleStart}>
             {ready ? "Start" : "Getting ready…"}
           </Button>
         </div>
@@ -273,7 +311,7 @@ export function PracticeSession({ trend, mode }: Props) {
             ))}
           </ToggleGroup>
           {mirrorToggle}
-          <Button variant="outline" onClick={nextMove}>
+          <Button variant="outline" onClick={skipMove} disabled={countingIn}>
             Skip move
           </Button>
         </div>
@@ -281,7 +319,9 @@ export function PracticeSession({ trend, mode }: Props) {
 
       {!isFull && done && (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-semibold">Now do the full dance</p>
+          <p className="text-xl font-semibold">
+            {passed.length === trend.moves.length ? "All moves passed!" : "Now do the full dance"}
+          </p>
           <div className="flex gap-3">
             <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
               Full run
@@ -296,16 +336,15 @@ export function PracticeSession({ trend, mode }: Props) {
       {isFull && !result && <div className="flex justify-center">{mirrorToggle}</div>}
 
       {isFull && result && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-3xl font-semibold">{`Final score ${scoreText(result.final)}`}</p>
-          <ul className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-            {result.moves.map((score, i) => (
-              <li key={i}>{`Move ${i + 1} · ${scoreText(score)}`}</li>
-            ))}
-          </ul>
-          <Button onClick={restart}>Try again</Button>
-        </div>
+        <RunResult
+          trendId={trend.id}
+          final={result.final}
+          moves={result.moves}
+          onRestart={restart}
+        />
       )}
+
+      {showConfetti && <Confetti />}
     </div>
   );
 }
