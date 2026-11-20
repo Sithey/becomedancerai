@@ -368,8 +368,9 @@ export function PracticeSession({ trend, mode }: Props) {
       </div>
 
       <div className="relative">
-        <div className="grid grid-cols-2 gap-6">
-          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2.5">
+        {/* Two columns even on a portrait phone: 9:16 panels are bigger side by side than stacked. */}
+        <div className="grid grid-cols-2 gap-3 sm:gap-6">
+          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2">
             <DancerPanel
               key={runKey}
               trend={trend}
@@ -382,9 +383,9 @@ export function PracticeSession({ trend, mode }: Props) {
               autoStart={started && !countingIn && !result}
               highlightedLimb={coaching?.limb}
             />
-            <figcaption className="text-[13px] text-muted-foreground">Follow the bright skeleton.</figcaption>
+            <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Follow the bright skeleton.</figcaption>
           </figure>
-          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2.5">
+          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2">
             <LearnerPanel
               videoRef={webcamRef}
               canvasRef={learnerCanvasRef}
@@ -392,7 +393,7 @@ export function PracticeSession({ trend, mode }: Props) {
               notice={learnerNotice}
               framing={framing}
             />
-            <figcaption className="text-[13px] text-muted-foreground">Body parts in orange need fixing.</figcaption>
+            <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>
         </div>
         {countingIn && <CountIn onDone={handleCountInDone} />}
@@ -411,11 +412,12 @@ export function PracticeSession({ trend, mode }: Props) {
         )}
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-card px-5 py-4">
+      <div className="flex flex-col items-stretch gap-3 rounded-[1.25rem] border border-border bg-card px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-4 sm:px-5">
         <div role="status" className="min-h-8 font-heading text-2xl font-bold text-primary">
           {showNice ? "Nice!" : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
+        {/* Touch-sized controls on phones (44 px), compact from sm up. */}
+        <div className="flex flex-wrap items-center gap-2.5 [&_button]:min-h-11 sm:[&_button]:min-h-0">
           {!isFull && !done && (
             <>
               <ToggleGroup

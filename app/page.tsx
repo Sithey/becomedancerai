@@ -16,7 +16,7 @@ async function TrendsGrid() {
         </h2>
         <span className="text-sm text-muted-foreground">{`${trends.length} ${trends.length === 1 ? "trend" : "trends"}`}</span>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] gap-5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:gap-5">
         {trends.map((trend) => (
           <TrendCard key={trend.id} trend={trend} />
         ))}
@@ -28,11 +28,11 @@ async function TrendsGrid() {
 
 export default function Home() {
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-col gap-14 px-8 pt-14 pb-18">
+    <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 pt-10 pb-16 sm:gap-14 sm:px-8 sm:pt-14 sm:pb-18">
       <section className="flex flex-wrap items-end justify-between gap-8">
         <div className="flex max-w-2xl flex-col gap-4">
           <span className="text-xs font-semibold tracking-[0.12em] text-primary uppercase">Your dance tutor</span>
-          <h1 className="font-heading text-5xl leading-[1.02] font-bold tracking-tight sm:text-6xl">
+          <h1 className="font-heading text-4xl leading-[1.02] font-bold tracking-tight sm:text-6xl">
             Learn any TikTok dance, move by move.
           </h1>
           <p className="text-lg leading-relaxed text-muted-foreground">

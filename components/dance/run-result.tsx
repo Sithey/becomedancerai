@@ -28,7 +28,7 @@ export function RunResult({ trendId, final, parts, onRestart }: Props) {
     <div className="flex flex-wrap items-stretch gap-8">
       <section
         aria-labelledby="final-score"
-        className="flex flex-[1_1_22rem] flex-col items-center justify-center gap-5 rounded-[1.75rem] border border-border bg-card px-8 py-10 text-center"
+        className="flex flex-[1_1_22rem] flex-col items-center justify-center gap-5 rounded-[1.75rem] border border-border bg-card px-5 sm:px-8 py-10 text-center"
       >
         <span id="final-score" className="text-xs font-semibold tracking-[0.12em] text-muted-foreground uppercase">
           Final score
