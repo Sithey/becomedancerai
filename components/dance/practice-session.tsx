@@ -52,9 +52,9 @@ export function PracticeSession({ trend, mode }: Props) {
   const [runKey, setRunKey] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
 
-  const [liveScore, setLiveScore] = useState<number | null>(null);
   const [tip, setTip] = useState<string | null>(null);
   const [liveMove, setLiveMove] = useState(0);
+  const [showNice, setShowNice] = useState(false);
 
   // Frame scores of the current loop (moves mode) or of the whole run (full mode).
   const scoresRef = useRef<number[]>([]);
@@ -117,7 +117,6 @@ export function PracticeSession({ trend, mode }: Props) {
 
       if (now - lastUiUpdate >= UI_UPDATE_MS) {
         lastUiUpdate = now;
-        setLiveScore(roundScore(averageScore(scoresRef.current)));
         setTip(tipFor(smoothed));
         if (mode === "full" && dancer) {
           setLiveMove(Math.max(0, moveIndexAt(trend.moves, dancer.currentTime * 1000)));
@@ -170,7 +169,11 @@ export function PracticeSession({ trend, mode }: Props) {
     scoresRef.current = [];
     if (!loopPassed) return;
     setPassed((p) => (p.includes(moveIndex) ? p : [...p, moveIndex]));
-    nextMove();
+    setShowNice(true);
+    setTimeout(() => {
+      setShowNice(false);
+      nextMove();
+    }, 1000);
   };
 
   // A new key remounts the dancer panel, which restarts the video even when the range is unchanged.
@@ -181,8 +184,8 @@ export function PracticeSession({ trend, mode }: Props) {
     setMoveIndex(0);
     setDone(false);
     setResult(null);
-    setLiveScore(null);
     setTip(null);
+    setShowNice(false);
     setRunKey((k) => k + 1);
   };
 
@@ -236,8 +239,10 @@ export function PracticeSession({ trend, mode }: Props) {
 
       <div className="grid grid-cols-3 items-center gap-4">
         <span className="text-sm text-muted-foreground">{`Move ${shownMove + 1} of ${trend.moves.length}`}</span>
-        <span className="text-center text-2xl font-semibold">{`Score ${scoreText(liveScore)}`}</span>
-        <span className="text-right font-medium">{tip}</span>
+        <span className="min-h-[2rem] text-center text-2xl font-semibold">
+          {showNice ? "Nice!" : null}
+        </span>
+        <span className="min-h-[1.5rem] truncate text-right font-medium">{tip}</span>
       </div>
 
       {!isFull && (
@@ -276,9 +281,7 @@ export function PracticeSession({ trend, mode }: Props) {
 
       {!isFull && done && (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-semibold">
-            {passed.length === trend.moves.length ? "All moves passed!" : "You reached the end!"}
-          </p>
+          <p className="text-xl font-semibold">Now do the full dance</p>
           <div className="flex gap-3">
             <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
               Full run
