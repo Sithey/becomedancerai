@@ -16,7 +16,7 @@ function swing(t: number): Pose {
 const frames: PoseFrame[] = Array.from({ length: 41 }, (_, i) => ({ t: i * SAMPLE_MS, pose: swing(i * SAMPLE_MS) }));
 
 const samplesOf = (poseAt: (t: number) => Pose): LearnerSample[] =>
-  Array.from({ length: 31 }, (_, i) => ({ t: 1000 + i * 33, pose: poseAt(1000 + i * 33) }));
+  Array.from({ length: 21 }, (_, i) => ({ t: 1000 + i * SAMPLE_MS, pose: poseAt(1000 + i * SAMPLE_MS) }));
 
 const byLimb = (rows: ReturnType<typeof explainSegment>) => Object.fromEntries(rows.map((r) => [r.limb, r]));
 
