@@ -342,7 +342,7 @@ export function PracticeSession({ trend, mode }: Props) {
 
       <div className="relative">
         <div className="grid grid-cols-2 gap-6">
-          <figure className="mx-auto flex w-full max-w-[calc(70vh*9/16)] flex-col gap-2.5">
+          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2.5">
             <DancerPanel
               key={runKey}
               trend={trend}
@@ -357,7 +357,7 @@ export function PracticeSession({ trend, mode }: Props) {
             />
             <figcaption className="text-[13px] text-muted-foreground">Follow the bright skeleton.</figcaption>
           </figure>
-          <figure className="mx-auto flex w-full max-w-[calc(70vh*9/16)] flex-col gap-2.5">
+          <figure className="mx-auto flex w-full max-w-[calc(60vh*9/16)] flex-col gap-2.5">
             <LearnerPanel
               videoRef={webcamRef}
               canvasRef={learnerCanvasRef}
@@ -368,15 +368,20 @@ export function PracticeSession({ trend, mode }: Props) {
           </figure>
         </div>
         {countingIn && <CountIn onDone={handleCountInDone} />}
+        {/* Over the panels, not below them: on a 900 px laptop screen a button under the panels is off screen. */}
+        {!started && (
+          <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+            <Button
+              size="lg"
+              className="pointer-events-auto h-14 rounded-full px-10 text-base shadow-lg"
+              disabled={!ready}
+              onClick={handleStart}
+            >
+              {ready ? "Start" : "Getting ready…"}
+            </Button>
+          </div>
+        )}
       </div>
-
-      {!started && (
-        <div className="flex justify-center">
-          <Button size="lg" className="h-14 rounded-full px-10 text-base" disabled={!ready} onClick={handleStart}>
-            {ready ? "Start" : "Getting ready…"}
-          </Button>
-        </div>
-      )}
 
       <div className="flex flex-wrap items-center justify-between gap-4 rounded-[1.25rem] border border-border bg-card px-5 py-4">
         <div role="status" className="min-h-8 font-heading text-2xl font-bold text-primary">

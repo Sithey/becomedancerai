@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PASS_SCORE } from "@/lib/pose/config";
+import { resultSummary } from "@/lib/result-summary";
 import { cn } from "cn";
 
 type Props = {
@@ -20,7 +21,7 @@ function scoreLabel(score: number | null): string {
 }
 
 export function RunResult({ trendId, final, parts, onRestart }: Props) {
-  const weakCount = parts.filter((score) => score !== null && score < PASS_SCORE).length;
+  const summary = resultSummary(parts);
   const filled = ((final ?? 0) / 100) * RING_LENGTH;
 
   return (
@@ -33,7 +34,7 @@ export function RunResult({ trendId, final, parts, onRestart }: Props) {
           Final score
         </span>
         <div className="relative size-60">
-          <svg viewBox="0 0 240 240" role="img" aria-label={`Final score ${scoreLabel(final)} out of 100`} className="size-60">
+          <svg viewBox="0 0 240 240" aria-hidden="true" className="size-60">
             <circle cx="120" cy="120" r={RING_RADIUS} fill="none" strokeWidth="16" className="stroke-muted" />
             <circle
               cx="120"
@@ -54,14 +55,8 @@ export function RunResult({ trendId, final, parts, onRestart }: Props) {
             <span className="text-sm text-muted-foreground">out of 100</span>
           </div>
         </div>
-        <span className="font-heading text-[26px] font-semibold">
-          {weakCount === 0 ? "You've got this trend." : "Almost there."}
-        </span>
-        <span className="max-w-xs leading-relaxed text-muted-foreground">
-          {weakCount === 0
-            ? "Every part passed. Time to film your version."
-            : `${weakCount} ${weakCount === 1 ? "part is" : "parts are"} still shaky. Practice ${weakCount === 1 ? "it" : "them"}, then try again.`}
-        </span>
+        <span className="font-heading text-[26px] font-semibold">{summary.title}</span>
+        <span className="max-w-xs leading-relaxed text-muted-foreground">{summary.detail}</span>
         <div className="flex flex-wrap justify-center gap-3">
           <Button className="h-12 rounded-full px-6" onClick={onRestart}>
             Try again

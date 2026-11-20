@@ -20,7 +20,7 @@ export function LearnView({ trend }: { trend: TrendData }) {
 
   return (
     <div className="flex flex-wrap items-start gap-8">
-      <div className="flex w-full max-w-[min(100%,calc(70vh*9/16))] flex-[1_1_22rem] flex-col gap-3">
+      <div className="mx-auto flex w-full max-w-[min(100%,calc(70vh*9/16))] flex-[1_1_22rem] flex-col gap-3 md:mx-0">
         <div className="relative">
           <DancerPanel
             trend={trend}
@@ -46,6 +46,7 @@ export function LearnView({ trend }: { trend: TrendData }) {
               <button
                 key={i}
                 type="button"
+                aria-label={`Move ${i + 1}`}
                 aria-current={i === moveIndex ? "step" : undefined}
                 onClick={() => setMoveIndex(i)}
                 className={cn(
@@ -100,7 +101,7 @@ export function LearnView({ trend }: { trend: TrendData }) {
               ))}
             </ToggleGroup>
             <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
-              {mirrored ? "Mirror on" : "Mirror off"}
+              Mirror
             </Toggle>
           </div>
         </section>
