@@ -1,5 +1,6 @@
 "use client";
 
+import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
@@ -40,12 +41,13 @@ export function DeleteTrendButton({
       <Button
         type="button"
         variant="destructive"
-        size={inLibrary ? "sm" : "default"}
+        size={inLibrary ? "icon-sm" : "default"}
         disabled={busy}
         aria-label={inLibrary ? `${busy ? "Deleting" : "Delete trend"} ${title}` : undefined}
+        title={inLibrary ? "Delete trend" : undefined}
         onClick={handleDelete}
       >
-        {busy ? "Deleting…" : "Delete trend"}
+        {inLibrary ? <Trash2 aria-hidden="true" /> : busy ? "Deleting…" : "Delete trend"}
       </Button>
       {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     </div>
