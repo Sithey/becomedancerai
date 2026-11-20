@@ -13,6 +13,7 @@ import { RunResult } from "@/components/dance/run-result";
 import { Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { CONFETTI_SCORE } from "@/lib/pose/config";
 import { themeColor } from "@/lib/pose/draw";
 import { FRAMED, framingState, sameFraming, type Framing } from "@/lib/pose/framing-state";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
@@ -284,7 +285,7 @@ export function PracticeSession({ trend, mode }: Props) {
     }
     practicePartRef.current = null;
     setResult(nextResult);
-    setShowConfetti(nextResult.parts.length > 0 && nextResult.parts.every(({ score }) => isPassed(score)));
+    setShowConfetti(nextResult.final !== null && nextResult.final > CONFETTI_SCORE);
   };
 
   const skipMove = () => {
