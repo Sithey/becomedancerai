@@ -108,6 +108,15 @@ export function AddTrendForm() {
   async function process() {
     const video = extractRef.current;
     if (!file || !video) return;
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("Title is required");
+      return;
+    }
+    if (trimmedTitle.length > 80) {
+      setError("Title must be 80 characters or fewer");
+      return;
+    }
     const controller = new AbortController();
     abortRef.current = controller;
     setProcessing(true);
@@ -153,11 +162,20 @@ export function AddTrendForm() {
 
   async function save() {
     if (!file || !result) return;
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("Title is required");
+      return;
+    }
+    if (trimmedTitle.length > 80) {
+      setError("Title must be 80 characters or fewer");
+      return;
+    }
     setSaving(true);
     setError(null);
     const body = new FormData();
     body.set("video", file);
-    body.set("title", title);
+    body.set("title", trimmedTitle);
     body.set("width", String(result.width));
     body.set("height", String(result.height));
     body.set("durationMs", String(result.durationMs));
@@ -208,7 +226,7 @@ export function AddTrendForm() {
           value={title}
           maxLength={80}
           disabled={busy}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => setTitle(e.target.value.slice(0, 80))}
         />
       </div>
 
@@ -230,7 +248,7 @@ export function AddTrendForm() {
       {!result && (
         <Button
           className="self-start"
-          disabled={busy || !file || !title.trim() || Boolean(error)}
+          disabled={busy || !file || !title.trim() || title.trim().length > 80 || Boolean(error)}
           onClick={process}
         >
           Process
