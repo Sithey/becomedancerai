@@ -10,11 +10,11 @@ import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { PASS_SCORE } from "@/lib/pose/config";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
-import { explainSegment, type LimbExplanation } from "@/lib/pose/explain";
+import { explainSegment, recordingSettings, withSegmentScores, type ExplainedRow, type RecordingSettings } from "@/lib/pose/explain";
 import { framingIssue } from "@/lib/pose/framing";
 import { createPoseLandmarker } from "@/lib/pose/landmarker";
 import { fromMediaPipe } from "@/lib/pose/landmarks";
-import { failingLimbs } from "@/lib/pose/scoring";
+import { failingLimbs, LimbSmoother } from "@/lib/pose/scoring";
 import { LearnerHistory, limbMotion, scoreSegment } from "@/lib/pose/segment";
 import type { LimbName, Pose, TrendData, TrendSummary } from "@/lib/pose/types";
 import { useWebcam } from "@/lib/pose/webcam";
@@ -49,7 +49,7 @@ type RecordedFrame = {
   score: number | null;
   lagMs: number | null;
 };
-type Live = { score: number | null; lagMs: number | null; samples: number; rows: LimbExplanation[] };
+type Live = { score: number | null; lagMs: number | null; samples: number; rows: ExplainedRow[] };
 
 const round = (n: number | null, digits = 0) => (n === null ? "–" : n.toFixed(digits));
 const round3 = (n: number) => Math.round(n * 1000) / 1000;
@@ -90,6 +90,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
   const [recordedCount, setRecordedCount] = useState(0);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const recordingRef = useRef(false);
+  const settingsRef = useRef<RecordingSettings>(recordingSettings(0, 0.75, true));
   const framesRef = useRef<RecordedFrame[]>([]);
 
   useEffect(() => {
@@ -119,6 +120,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
     const dancerSize = { width: trend.width, height: trend.height };
     const motion = limbMotion(trend.poses, dancerSize, trend.sampleMs);
     const history = new LearnerHistory();
+    const smoother = new LimbSmoother();
     let current: Live = { score: null, lagMs: null, samples: 0, rows: [] };
     let currentFraming: string | null = "No one detected";
 
@@ -154,9 +156,13 @@ function DebugRun({ trend }: { trend: TrendData }) {
                 score: result.score,
                 lagMs: result.lagMs,
                 samples: samples.length,
-                rows: explainSegment(samples, learnerSize, trend.poses, trend.sampleMs, dancerSize, result.lagMs),
+                rows: withSegmentScores(
+                  explainSegment(samples, learnerSize, trend.poses, trend.sampleMs, dancerSize, result.lagMs),
+                  result.limbs,
+                ),
               }
             : { ...current, score: null, samples: samples.length };
+          if (result) smoother.push(now, result.limbs);
         }
         if (recordingRef.current) {
           framesRef.current.push({
@@ -172,7 +178,8 @@ function DebugRun({ trend }: { trend: TrendData }) {
         history.clear();
       }
 
-      const failing = failingLimbs(Object.fromEntries(current.rows.map((r) => [r.limb, r.score ?? undefined])));
+      // Same colors as Practice: segment scores smoothed over half a second.
+      const failing = failingLimbs(smoother.current(now));
       drawSkeleton(ctx, learner, {
         color: primary,
         limbColors: Object.fromEntries(failing.map((limb) => [limb, destructive])),
@@ -210,6 +217,8 @@ function DebugRun({ trend }: { trend: TrendData }) {
 
   const toggleRecording = () => {
     if (!recording) {
+      // Frozen at the start so the file matches what was recorded, whatever is clicked later.
+      settingsRef.current = recordingSettings(move, speed, mirrored);
       framesRef.current = [];
       setRecordedCount(0);
       setSaveMessage(null);
@@ -226,9 +235,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
       version: 1,
       trendId: trend.id,
       trendTitle: trend.title,
-      move: move === "full" ? "full" : `move${move + 1}`,
-      speed,
-      mirrored,
+      ...settingsRef.current,
       webcam: { width: webcam?.videoWidth ?? 0, height: webcam?.videoHeight ?? 0 },
       sampleMs: trend.sampleMs,
       recordedAt: new Date().toISOString(),
@@ -254,13 +261,14 @@ function DebugRun({ trend }: { trend: TrendData }) {
       : modelStatus === "error"
         ? "Couldn't load the pose model. Reload the page to try again."
         : null;
-  const rows = [...live.rows].sort((a, b) => (a.score ?? Infinity) - (b.score ?? Infinity));
+  const rows = live.rows;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center gap-3">
         <ToggleGroup
           variant="outline"
+          disabled={recording}
           value={[String(move)]}
           onValueChange={(value) => value[0] && setMove(value[0] === "full" ? "full" : Number(value[0]))}
         >
@@ -271,17 +279,20 @@ function DebugRun({ trend }: { trend: TrendData }) {
           ))}
           <ToggleGroupItem value="full">Full</ToggleGroupItem>
         </ToggleGroup>
-        <ToggleGroup
-          variant="outline"
-          value={[String(speed)]}
-          onValueChange={(value) => value[0] && setSpeed(Number(value[0]))}
-        >
-          {SPEEDS.map((s) => (
-            <ToggleGroupItem key={s} value={String(s)}>
-              {s}×
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+        {move !== "full" && (
+          <ToggleGroup
+            variant="outline"
+            disabled={recording}
+            value={[String(speed)]}
+            onValueChange={(value) => value[0] && setSpeed(Number(value[0]))}
+          >
+            {SPEEDS.map((s) => (
+              <ToggleGroupItem key={s} value={String(s)}>
+                {s}×
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
+        )}
         <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
           Mirror
         </Toggle>
@@ -343,7 +354,8 @@ function DebugRun({ trend }: { trend: TrendData }) {
                 <th className="py-1 text-right font-medium">Video</th>
                 <th className="py-1 text-right font-medium">You</th>
                 <th className="py-1 text-right font-medium">Diff</th>
-                <th className="py-1 text-right font-medium">Score</th>
+                <th className="py-1 text-right font-medium">Segment</th>
+                <th className="py-1 text-right font-medium">Angle now</th>
                 <th className="py-1 text-right font-medium">Moves video / you</th>
                 <th className="py-1 text-right font-medium">Seen</th>
               </tr>
@@ -354,7 +366,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
                   key={r.limb}
                   className={cn(
                     "border-t border-border",
-                    r.score !== null && r.score < PASS_SCORE && "text-destructive",
+                    r.segment !== null && r.segment < PASS_SCORE && "text-destructive",
                     !r.visible && "text-muted-foreground",
                   )}
                 >
@@ -362,6 +374,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
                   <td className="py-1 text-right">{`${round(r.videoDeg)}°`}</td>
                   <td className="py-1 text-right">{`${round(r.learnerDeg)}°`}</td>
                   <td className="py-1 text-right">{`${round(r.diffDeg)}°`}</td>
+                  <td className="py-1 text-right font-semibold">{round(r.segment)}</td>
                   <td className="py-1 text-right">{round(r.score)}</td>
                   <td className="py-1 text-right">{`±${round(r.videoAmp)}° / ±${round(r.learnerAmp)}°`}</td>
                   <td className="py-1 text-right">{r.visible ? "✓" : "–"}</td>

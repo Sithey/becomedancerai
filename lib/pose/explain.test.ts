@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { directionDeg, explainSegment } from "./explain";
+import { directionDeg, explainSegment, recordingSettings, withSegmentScores } from "./explain";
 import { LIMBS } from "./landmarks";
 import type { LearnerSample } from "./segment";
 import { standingPose, withPoint } from "./test-poses";
@@ -57,5 +57,26 @@ describe("explainSegment", () => {
 
   test("no samples gives no rows", () => {
     expect(explainSegment([], SQUARE, frames, SAMPLE_MS, SQUARE, 0)).toEqual([]);
+  });
+});
+
+describe("withSegmentScores", () => {
+  test("adds the segment score per limb and sorts worst first", () => {
+    const rows = explainSegment(samplesOf(() => swing(0)), SQUARE, frames, SAMPLE_MS, SQUARE, 0);
+    const merged = withSegmentScores(rows, { leftForearm: 17.6, rightHand: 80 });
+    expect(merged[0]).toMatchObject({ limb: "leftForearm", segment: 17.6 });
+    expect(merged[1]).toMatchObject({ limb: "rightHand", segment: 80 });
+    expect(merged.at(-1)!.segment).toBeNull();
+    expect(merged).toHaveLength(rows.length);
+  });
+});
+
+describe("recordingSettings", () => {
+  test("full dance always plays at 1×", () => {
+    expect(recordingSettings("full", 0.5, true)).toEqual({ move: "full", speed: 1, mirrored: true });
+  });
+
+  test("a move keeps its speed and is numbered from 1", () => {
+    expect(recordingSettings(0, 0.75, false)).toEqual({ move: "move1", speed: 0.75, mirrored: false });
   });
 });

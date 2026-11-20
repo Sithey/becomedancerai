@@ -1,7 +1,7 @@
 import { angleDeg, limbScore } from "./compare";
 import { LIMBS, limbDirection } from "./landmarks";
 import { amplitude, type LearnerSample } from "./segment";
-import type { FrameSize, LimbName, PoseFrame, Vec } from "./types";
+import type { FrameSize, LimbName, LimbScores, PoseFrame, Vec } from "./types";
 
 export type LimbExplanation = {
   limb: LimbName;
@@ -57,4 +57,20 @@ export function explainSegment(
       learnerAmp: amplitude(learnerDirs),
     };
   });
+}
+
+export type ExplainedRow = LimbExplanation & { segment: number | null };
+
+// The segment score is what scoreSegment judged (average over the segment × movement factor);
+// the instant angle score alone hides a limb that doesn't move when the video does.
+export function withSegmentScores(rows: LimbExplanation[], limbs: LimbScores): ExplainedRow[] {
+  return rows
+    .map((row) => ({ ...row, segment: limbs[row.limb] ?? null }))
+    .sort((a, b) => (a.segment ?? Infinity) - (b.segment ?? Infinity));
+}
+
+export type RecordingSettings = { move: string; speed: number; mirrored: boolean };
+
+export function recordingSettings(move: number | "full", speed: number, mirrored: boolean): RecordingSettings {
+  return move === "full" ? { move: "full", speed: 1, mirrored } : { move: `move${move + 1}`, speed, mirrored };
 }
