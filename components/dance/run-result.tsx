@@ -6,7 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 type Props = {
   trendId: string;
   final: number | null;
-  moves: (number | null)[];
+  parts: (number | null)[];
   onRestart: () => void;
 };
 
@@ -17,7 +17,7 @@ function scoreLabel(score: number | null): string {
   return String(score);
 }
 
-export function RunResult({ trendId, final, moves, onRestart }: Props) {
+export function RunResult({ trendId, final, parts, onRestart }: Props) {
   return (
     <div className="flex flex-col items-center gap-6 py-4">
       {/* Final score */}
@@ -28,15 +28,15 @@ export function RunResult({ trendId, final, moves, onRestart }: Props) {
         <p className="text-7xl font-black tabular-nums">{scoreLabel(final)}</p>
       </div>
 
-      {/* Per-move bars */}
+      {/* Per-part bars */}
       <div className="w-full max-w-sm space-y-2">
-        {moves.map((score, i) => {
+        {parts.map((score, i) => {
           const pct = score ?? 0;
           const weak = score !== null && score < PASS_THRESHOLD;
           return (
             <div key={i} className="flex items-center gap-3">
               <span className="w-16 shrink-0 text-sm text-muted-foreground">
-                Move {i + 1}
+                Part {i + 1}
               </span>
               {/* Bar */}
               <div className="relative h-4 flex-1 overflow-hidden rounded-full bg-muted">
