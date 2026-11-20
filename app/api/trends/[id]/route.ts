@@ -1,9 +1,8 @@
-import { debugEnabled } from "@/lib/server/debug-attempts";
+import { canDeleteTrends } from "@/lib/server/trend-admin";
 import { deleteTrend } from "@/lib/server/trends";
 
-export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  // The site is public with no accounts: anyone could empty the library. Deleting is a dev tool.
-  if (!debugEnabled()) return new Response(null, { status: 404 });
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  if (!(await canDeleteTrends(request))) return new Response(null, { status: 404 });
   const { id } = await params;
   try {
     if (!(await deleteTrend(id))) {

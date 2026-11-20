@@ -5,7 +5,7 @@ import { Suspense } from "react";
 import { LearnView } from "@/components/dance/learn-view";
 import { StepTabs } from "@/components/dance/step-tabs";
 import { formatDuration } from "@/components/dance/trend-card";
-import { debugEnabled } from "@/lib/server/debug-attempts";
+import { canDeleteTrends } from "@/lib/server/trend-admin";
 import { getTrend } from "@/lib/server/trends";
 
 async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
@@ -26,7 +26,7 @@ async function LearnLoader({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <StepTabs trendId={trend.id} current="learn" />
       </div>
-      <LearnView trend={trend} canDelete={debugEnabled()} />
+      <LearnView trend={trend} canDelete={await canDeleteTrends()} />
     </>
   );
 }
