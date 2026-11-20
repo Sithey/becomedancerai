@@ -2,7 +2,7 @@
 
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { CoachingTip } from "@/components/dance/coaching-tip";
 import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
@@ -100,6 +100,28 @@ export function PracticeSession({ trend, mode }: Props) {
     setRunKey((k) => k + 1);
   }, []);
   const { coaching, pauseIfNeeded, replay, clearCoaching, getCoaching } = useCoachingReplay(replayAttempt);
+
+  // Back to the Start button, without writing progress: leaving the page keeps the move to resume.
+  const resetSession = useCallback(() => {
+    cancelAdvance();
+    clearCoaching();
+    scoresRef.current = [];
+    bucketsRef.current = [];
+    setShowNice(false);
+    setCompletedParts([]);
+    setMoveIndex(0);
+    setLiveMove(0);
+    setResumeAtMs(0);
+    setDone(false);
+    setResult(null);
+    setStarted(false);
+    setCountingIn(false);
+    setShowConfetti(false);
+  }, [cancelAdvance, clearCoaching]);
+
+  // Next keeps a left page hidden (Activity) and re-runs its effects on return: without this reset the
+  // dancer starts again on its own, with no count-in, mid-session or behind the finished panel.
+  useLayoutEffect(() => resetSession, [resetSession]);
 
   const runParts = useMemo(
     () => fullRunParts(trend.moves, trend.durationMs),
@@ -226,6 +248,8 @@ export function PracticeSession({ trend, mode }: Props) {
       cancelled = true;
       cancelAnimationFrame(raf);
       landmarker?.close();
+      // The model is loaded again when the page is shown again: Start waits for it.
+      setModelStatus("loading");
     };
   }, [webcamRef, trend.id, isFull, pauseIfNeeded, getCoaching]);
 
@@ -326,20 +350,10 @@ export function PracticeSession({ trend, mode }: Props) {
 
   const restart = () => {
     dancerRef.current?.pause();
-    clearPassedPrompt();
-    clearCoaching();
-    setCompletedParts([]);
-    setMoveIndex(0);
+    resetSession();
     if (!isFull) {
       saveLastPracticedMove(trend.id, 0, list);
     }
-    setLiveMove(0);
-    setResumeAtMs(0);
-    setDone(false);
-    setResult(null);
-    setStarted(false);
-    setCountingIn(false);
-    setShowConfetti(false);
     replayAttempt();
   };
 
@@ -399,7 +413,7 @@ export function PracticeSession({ trend, mode }: Props) {
               videoRef={dancerRef}
               onLoop={handleLoop}
               loop={!isFull}
-              autoStart={started && !countingIn && !result}
+              autoStart={started && !countingIn && !result && !done}
               highlightedLimb={coaching?.limb}
             />
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Follow the bright skeleton.</figcaption>
@@ -417,7 +431,7 @@ export function PracticeSession({ trend, mode }: Props) {
         </div>
         {countingIn && <CountIn key={moveIndex} onDone={handleCountInDone} />}
         {/* Over the panels, not below them: on a 900 px laptop screen a button under the panels is off screen. */}
-        {!started && (
+        {!started && !done && (
           <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
             <Button
               size="lg"

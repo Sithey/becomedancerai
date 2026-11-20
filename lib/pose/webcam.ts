@@ -41,6 +41,8 @@ export function useWebcam(): { videoRef: RefObject<HTMLVideoElement | null>; sta
     return () => {
       cancelled = true;
       stream?.getTracks().forEach((track) => track.stop());
+      // Also runs when Next hides the page (Activity): the camera starts again when it's shown again.
+      setStatus("starting");
     };
   }, []);
 
