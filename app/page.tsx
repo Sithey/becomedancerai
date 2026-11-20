@@ -2,15 +2,14 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { TrendCarousel } from "@/components/dance/trend-carousel";
 import { AddTrendCard } from "@/components/dance/trend-card";
-import { debugEnabled } from "@/lib/server/debug-attempts";
+import { canDeleteTrends } from "@/lib/server/trend-admin";
 import { listTrends } from "@/lib/server/trends";
 
 const STEPS = ["Learn", "Practice", "Full run"];
 
 async function TrendingVideos() {
   await connection();
-  const trends = await listTrends();
-  const canDelete = debugEnabled();
+  const [trends, canDelete] = await Promise.all([listTrends(), canDeleteTrends()]);
   return (
     <section aria-labelledby="trends-title" className="flex flex-col gap-5">
       <div className="flex items-baseline justify-between gap-4">

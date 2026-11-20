@@ -6,11 +6,14 @@ import { Prisma } from "@/generated/prisma/client";
 
 const transaction = vi.hoisted(() => vi.fn());
 const count = vi.hoisted(() => vi.fn());
+const cookieStore = vi.hoisted(() => ({ get: vi.fn(), set: vi.fn() }));
 vi.mock("./db", () => ({ db: { $transaction: transaction, trend: { count } } }));
+vi.mock("next/headers", () => ({ cookies: async () => cookieStore }));
 
 const id = "trend1";
 const videoFile = "trend1.mp4";
 const video = Buffer.from("test video");
+const testAdminKey = "5a".repeat(32);
 const rows = new Map<string, { videoFile: string }>();
 let uploads: string;
 let commitError: Error | undefined;
@@ -25,6 +28,9 @@ beforeEach(async () => {
   uploads = await mkdtemp(join(tmpdir(), "dance-trend-delete-"));
   vi.stubEnv("UPLOAD_DIR", uploads);
   vi.stubEnv("NODE_ENV", "development");
+  vi.stubEnv("TREND_ADMIN_KEY", undefined);
+  cookieStore.get.mockReset();
+  cookieStore.set.mockReset();
   logError = vi.spyOn(console, "error").mockImplementation(() => {});
   rows.clear();
   rows.set(id, { videoFile });
@@ -60,9 +66,12 @@ afterEach(async () => {
   await rm(uploads, { recursive: true, force: true });
 });
 
-async function requestDelete(trendId: string) {
+async function requestDelete(trendId: string, site?: string) {
   const { DELETE } = await import("@/app/api/trends/[id]/route");
-  return DELETE(new Request(`http://localhost/api/trends/${trendId}`, { method: "DELETE" }), {
+  return DELETE(new Request(`http://localhost/api/trends/${trendId}`, {
+    method: "DELETE",
+    headers: site ? { "sec-fetch-site": site } : {},
+  }), {
     params: Promise.resolve({ id: trendId }),
   });
 }
@@ -88,13 +97,54 @@ test("deletes the row even if its video file is already gone", async () => {
   expect(rows.has(id)).toBe(false);
 });
 
-test("is not available outside dev", async () => {
+test("production deletion requires a signed-in admin even when a key is configured", async () => {
   vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("TREND_ADMIN_KEY", testAdminKey);
   await writeFile(join(uploads, videoFile), video);
 
-  expect((await requestDelete(id)).status).toBe(404);
+  expect((await requestDelete(id, "same-origin")).status).toBe(404);
   expect(transaction).not.toHaveBeenCalled();
   expect(rows.has(id)).toBe(true);
+});
+
+test("a production admin can delete from the app after signing in", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("TREND_ADMIN_KEY", testAdminKey);
+  const { startTrendAdminSession } = await import("./trend-admin");
+  expect(await startTrendAdminSession("ab".repeat(32))).toBe(false);
+  expect(cookieStore.set).not.toHaveBeenCalled();
+
+  expect(await startTrendAdminSession(testAdminKey)).toBe(true);
+  const [name, value, options] = cookieStore.set.mock.calls[0];
+  expect(name).toBe("__Host-trend-admin");
+  expect(options).toMatchObject({ secure: true, httpOnly: true, sameSite: "strict", path: "/", maxAge: 3600 });
+  cookieStore.get.mockReturnValue({ value });
+
+  expect((await requestDelete(id, "same-site")).status).toBe(404);
+  expect((await requestDelete(id)).status).toBe(404);
+  expect(transaction).not.toHaveBeenCalled();
+  expect((await requestDelete(id, "same-origin")).status).toBe(204);
+});
+
+test("invalid, expired and rotated admin sessions cannot authorize deletion", async () => {
+  vi.stubEnv("NODE_ENV", "production");
+  vi.stubEnv("TREND_ADMIN_KEY", testAdminKey);
+  const { startTrendAdminSession } = await import("./trend-admin");
+  const now = Date.now();
+  const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+  await startTrendAdminSession(testAdminKey);
+  const [, value] = cookieStore.set.mock.calls[0];
+  cookieStore.get.mockReturnValue({ value: `${value.slice(0, -1)}${value.endsWith("0") ? "1" : "0"}` });
+  expect((await requestDelete(id, "same-origin")).status).toBe(404);
+
+  cookieStore.get.mockReturnValue({ value });
+  clock.mockReturnValue(now + 3600_000);
+  expect((await requestDelete(id, "same-origin")).status).toBe(404);
+
+  clock.mockReturnValue(now);
+  vi.stubEnv("TREND_ADMIN_KEY", "7b".repeat(32));
+  expect((await requestDelete(id, "same-origin")).status).toBe(404);
+  expect(transaction).not.toHaveBeenCalled();
 });
 
 test("restores the file when the row deletion fails to commit, and logs why", async () => {
