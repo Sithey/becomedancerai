@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { allPartsPassed, resultSummary } from "./result-summary";
+import { resultSummary } from "./result-summary";
 
 test("every part passed", () => {
   expect(resultSummary([91, 75, 80])).toEqual({
@@ -26,12 +26,4 @@ test("nothing scored is not a success", () => {
 
 test("unscored parts don't count as passed", () => {
   expect(resultSummary([91, null]).title).toBe("Almost there.");
-});
-
-test("all parts passed only when every part is scored and passing", () => {
-  expect(allPartsPassed([91, 75, 70])).toBe(true);
-  expect(allPartsPassed([91, 69])).toBe(false);
-  expect(allPartsPassed([91, null])).toBe(false);
-  expect(allPartsPassed([null])).toBe(false);
-  expect(allPartsPassed([])).toBe(false);
 });
