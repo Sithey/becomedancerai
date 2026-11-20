@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { DancerPanel } from "@/components/dance/dancer-panel";
+import { MoveTimeline } from "@/components/dance/move-timeline";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Toggle } from "@/components/ui/toggle";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -52,25 +53,12 @@ export function LearnView({ trend }: { trend: TrendData }) {
           <h2 id="moves-title" className="font-heading text-xl font-semibold">
             Moves
           </h2>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2.5">
-            {trend.moves.map((_, i) => (
-              <button
-                key={i}
-                type="button"
-                aria-label={`Move ${i + 1}`}
-                aria-current={i === moveIndex ? "step" : undefined}
-                onClick={() => setMoveIndex(i)}
-                className={cn(
-                  "h-16 rounded-[0.875rem] border bg-muted font-heading text-base font-semibold transition-colors",
-                  i === moveIndex
-                    ? "border-2 border-primary font-bold text-primary"
-                    : "border-border text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {i + 1}
-              </button>
-            ))}
-          </div>
+          <MoveTimeline
+            layout="grid"
+            count={trend.moves.length}
+            current={moveIndex}
+            onSelect={setMoveIndex}
+          />
           <div className="flex gap-3">
             <Button
               variant="outline"
