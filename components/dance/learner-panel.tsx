@@ -1,6 +1,7 @@
 "use client";
 
 import type { RefObject } from "react";
+import { Button } from "@/components/ui/button";
 import { GhostOutline } from "@/components/dance/ghost-outline";
 import type { Framing } from "@/lib/pose/framing-state";
 import type { WebcamStatus } from "@/lib/pose/webcam";
@@ -11,15 +12,17 @@ type Props = {
   status: WebcamStatus;
   notice?: string | null;
   framing?: Framing;
+  modelFailed?: boolean;
 };
 
 const STATUS_COPY: Record<Exclude<WebcamStatus, "ready">, string> = {
   starting: "Starting camera…",
   denied: "Camera blocked. Allow camera access in your browser to practice.",
+  busy: "Camera is busy or unavailable. Close other apps using it.",
   unavailable: "No camera found.",
 };
 
-export function LearnerPanel({ videoRef, canvasRef, status, notice, framing }: Props) {
+export function LearnerPanel({ videoRef, canvasRef, status, notice, framing, modelFailed }: Props) {
   const fitCanvas = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -28,6 +31,7 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice, framing }: P
     canvas.height = video.videoHeight;
   };
 
+  const canRetry = status === "denied" || status === "busy" || status === "unavailable" || !!modelFailed;
   const message = status === "ready" ? (notice ?? framing?.message) : STATUS_COPY[status];
 
   return (
@@ -44,7 +48,14 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice, framing }: P
       <GhostOutline visible={status === "ready" && !notice && framing?.inFrame === false} />
       {message && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
-          <p className="text-center text-sm text-foreground">{message}</p>
+          <div className="flex flex-col items-center gap-3 text-center">
+            <p className="text-sm text-foreground">{message}</p>
+            {canRetry && (
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Try again
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </div>

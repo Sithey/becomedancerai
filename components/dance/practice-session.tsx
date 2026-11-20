@@ -187,7 +187,7 @@ export function PracticeSession({ trend, mode }: Props) {
           match = scoreSegment(history.samples(tMs), learnerSize, trend.poses, trend.sampleMs, dancerSize, motion);
         }
         const motionAt = match && motion[Math.round((tMs - match.lagMs) / trend.sampleMs)];
-        const weights = motionAt && Object.fromEntries(Object.entries(motionAt).map(([limb, deg]) => [limb, limbWeight(deg)]));
+        const weights = motionAt ? Object.fromEntries(Object.entries(motionAt).map(([limb, deg]) => [limb, limbWeight(deg)])) : undefined;
         recordFrame(tMs, match, learner, learnerSize, dancerSize, weights, updateUi);
       } else {
         history.clear();
@@ -321,9 +321,10 @@ export function PracticeSession({ trend, mode }: Props) {
     modelStatus === "loading"
       ? "Loading pose model…"
       : modelStatus === "error"
-        ? "Couldn't load the pose model. Reload the page to try again."
+        ? "Couldn't load the pose model."
         : null;
   const ready = webcamStatus === "ready" && modelStatus === "ready";
+  const cannotStart = modelStatus === "error" || (webcamStatus !== "ready" && webcamStatus !== "starting");
   const normalSpeed = isFull ? 1 : speed;
   const mirrorToggle = (
     <Toggle variant="outline" pressed={mirrored} onPressedChange={setMirrored}>
@@ -376,6 +377,7 @@ export function PracticeSession({ trend, mode }: Props) {
               status={webcamStatus}
               notice={learnerNotice}
               framing={framing}
+              modelFailed={modelStatus === "error"}
             />
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>
@@ -390,7 +392,7 @@ export function PracticeSession({ trend, mode }: Props) {
               disabled={!ready}
               onClick={handleStart}
             >
-              {ready ? "Start" : "Getting ready…"}
+              {ready ? "Start" : cannotStart ? "Camera or model unavailable" : "Getting ready…"}
             </Button>
           </div>
         )}

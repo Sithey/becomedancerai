@@ -259,7 +259,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
     modelStatus === "loading"
       ? "Loading pose model…"
       : modelStatus === "error"
-        ? "Couldn't load the pose model. Reload the page to try again."
+        ? "Couldn't load the pose model."
         : null;
   const rows = live.rows;
 
@@ -337,6 +337,7 @@ function DebugRun({ trend }: { trend: TrendData }) {
             canvasRef={learnerCanvasRef}
             status={webcamStatus}
             notice={learnerNotice}
+            modelFailed={modelStatus === "error"}
           />
         </div>
 
