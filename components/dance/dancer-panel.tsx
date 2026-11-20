@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { Button } from "@/components/ui/button";
 import { drawSkeleton, themeColor } from "@/lib/pose/draw";
-import type { Move, TrendData } from "@/lib/pose/types";
+import type { LimbName, Move, TrendData } from "@/lib/pose/types";
 import { cn } from "cn";
 
 type Props = {
@@ -15,6 +15,7 @@ type Props = {
   onLoop?: () => void;
   loop?: boolean;
   autoStart?: boolean;
+  highlightedLimb?: LimbName;
 };
 
 export function DancerPanel({
@@ -26,6 +27,7 @@ export function DancerPanel({
   onLoop,
   loop,
   autoStart = true,
+  highlightedLimb,
 }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [needsPlay, setNeedsPlay] = useState(false);
@@ -34,6 +36,7 @@ export function DancerPanel({
   const rangeRef = useRef(range);
   const loopRef = useRef(loop);
   const speedRef = useRef(speed);
+  const highlightRef = useRef(highlightedLimb);
   // True from the moment the range end is handled until currentTime is back inside the range,
   // so a seek that hasn't landed yet can't fire onLoop twice.
   const finishedRef = useRef(false);
@@ -43,6 +46,7 @@ export function DancerPanel({
     rangeRef.current = range;
     loopRef.current = loop;
     speedRef.current = speed;
+    highlightRef.current = highlightedLimb;
   });
 
   const start = useCallback(() => {
@@ -78,6 +82,7 @@ export function DancerPanel({
     const ctx = canvas?.getContext("2d");
     if (!video || !canvas || !ctx) return;
     const color = themeColor("primary");
+    const highlight = themeColor("destructive");
     const lastIndex = trend.poses.length - 1;
 
     const handleEnd = () => {
@@ -108,9 +113,13 @@ export function DancerPanel({
     let raf = requestAnimationFrame(function frame() {
       const ms = video.currentTime * 1000;
       const index = Math.min(lastIndex, Math.max(0, Math.round(ms / trend.sampleMs)));
-      drawSkeleton(ctx, trend.poses[index]?.pose ?? null, { color });
+      const limb = highlightRef.current;
+      drawSkeleton(ctx, trend.poses[index]?.pose ?? null, {
+        color,
+        limbColors: limb ? { [limb]: highlight } : undefined,
+      });
       if (ms < rangeRef.current.endMs) finishedRef.current = false;
-      else handleEnd();
+      else if (!video.paused) handleEnd();
       raf = requestAnimationFrame(frame);
     });
 
