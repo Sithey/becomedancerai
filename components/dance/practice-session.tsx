@@ -3,7 +3,9 @@
 import type { PoseLandmarker } from "@mediapipe/tasks-vision";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Confetti } from "@/components/dance/confetti";
 import { CountIn } from "@/components/dance/count-in";
+import { RunResult } from "@/components/dance/run-result";
 import { DancerPanel } from "@/components/dance/dancer-panel";
 import { LearnerPanel } from "@/components/dance/learner-panel";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +53,7 @@ export function PracticeSession({ trend, mode }: Props) {
   const [mirrored, setMirrored] = useState(true);
   const [runKey, setRunKey] = useState(0);
   const [result, setResult] = useState<RunResult | null>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   const [tip, setTip] = useState<string | null>(null);
   const [liveMove, setLiveMove] = useState(0);
@@ -141,6 +144,9 @@ export function PracticeSession({ trend, mode }: Props) {
   const finish = () => {
     setDone(true);
     dancerRef.current?.pause();
+    if (passed.length === trend.moves.length) {
+      setShowConfetti(true);
+    }
   };
 
   const nextMove = () => {
@@ -174,6 +180,7 @@ export function PracticeSession({ trend, mode }: Props) {
         final: roundScore(averageScore(scoresRef.current)),
         moves: trend.moves.map((_, i) => roundScore(averageScore(bucketsRef.current[i] ?? []))),
       });
+      setShowConfetti(true);
       return;
     }
     const loopPassed = isPassed(averageScore(scoresRef.current));
@@ -181,6 +188,9 @@ export function PracticeSession({ trend, mode }: Props) {
     if (!loopPassed) return;
     dancerRef.current?.pause();
     setPassed((p) => (p.includes(moveIndex) ? p : [...p, moveIndex]));
+    // Last move: show confetti when all done
+    const allPassed = moveIndex === trend.moves.length - 1;
+    if (allPassed) setShowConfetti(true);
     setShowNice(true);
     setTimeout(() => {
       setShowNice(false);
@@ -198,6 +208,7 @@ export function PracticeSession({ trend, mode }: Props) {
     setResult(null);
     setTip(null);
     setShowNice(false);
+    setShowConfetti(false);
     setCountingIn(false);
     setStarted(false);
     setRunKey((k) => k + 1);
@@ -298,7 +309,9 @@ export function PracticeSession({ trend, mode }: Props) {
 
       {!isFull && done && (
         <div className="flex flex-col items-center gap-3">
-          <p className="text-xl font-semibold">Now do the full dance</p>
+          <p className="text-xl font-semibold">
+            {passed.length === trend.moves.length ? "All moves passed!" : "Now do the full dance"}
+          </p>
           <div className="flex gap-3">
             <Link href={`/trends/${trend.id}/run`} className={buttonVariants()}>
               Full run
@@ -313,16 +326,15 @@ export function PracticeSession({ trend, mode }: Props) {
       {isFull && !result && <div className="flex justify-center">{mirrorToggle}</div>}
 
       {isFull && result && (
-        <div className="flex flex-col items-center gap-3">
-          <p className="text-3xl font-semibold">{`Final score ${scoreText(result.final)}`}</p>
-          <ul className="flex flex-col items-center gap-1 text-sm text-muted-foreground">
-            {result.moves.map((score, i) => (
-              <li key={i}>{`Move ${i + 1} · ${scoreText(score)}`}</li>
-            ))}
-          </ul>
-          <Button onClick={restart}>Try again</Button>
-        </div>
+        <RunResult
+          trendId={trend.id}
+          final={result.final}
+          moves={result.moves}
+          onRestart={restart}
+        />
       )}
+
+      {showConfetti && <Confetti />}
     </div>
   );
 }
