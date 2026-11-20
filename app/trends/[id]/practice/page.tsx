@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { PracticeSession } from "@/components/dance/practice-session";
+import { PracticePreview } from "@/components/dance/practice-preview";
 import { StepTabs } from "@/components/dance/step-tabs";
 import { getTrend } from "@/lib/server/trends";
 
@@ -22,7 +22,7 @@ async function PracticeLoader({ params }: { params: Promise<{ id: string }> }) {
         </div>
         <StepTabs trendId={trend.id} current="practice" />
       </div>
-      <PracticeSession trend={trend} mode="moves" />
+      <PracticePreview key={trend.id} trend={trend} />
     </>
   );
 }
