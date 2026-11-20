@@ -372,6 +372,7 @@ export function PracticeSession({ trend, mode }: Props) {
               notice={learnerNotice}
               framing={framing}
               modelFailed={modelStatus === "error"}
+              showGhost={!started}
             />
             <figcaption className="text-xs text-muted-foreground sm:text-[13px]">Body parts in orange need fixing.</figcaption>
           </figure>

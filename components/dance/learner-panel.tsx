@@ -13,6 +13,7 @@ type Props = {
   notice?: string | null;
   framing?: Framing;
   modelFailed?: boolean;
+  showGhost?: boolean;
 };
 
 const STATUS_COPY: Record<Exclude<WebcamStatus, "ready">, string> = {
@@ -22,7 +23,7 @@ const STATUS_COPY: Record<Exclude<WebcamStatus, "ready">, string> = {
   unavailable: "No camera found.",
 };
 
-export function LearnerPanel({ videoRef, canvasRef, status, notice, framing, modelFailed }: Props) {
+export function LearnerPanel({ videoRef, canvasRef, status, notice, framing, modelFailed, showGhost = true }: Props) {
   const fitCanvas = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -45,7 +46,7 @@ export function LearnerPanel({ videoRef, canvasRef, status, notice, framing, mod
         className="absolute inset-0 size-full -scale-x-100 object-cover brightness-50"
       />
       <canvas ref={canvasRef} className="absolute inset-0 size-full -scale-x-100 object-cover" />
-      <GhostOutline visible={status === "ready" && !notice && framing?.inFrame === false} />
+      <GhostOutline visible={showGhost && status === "ready" && !notice && framing?.inFrame === false} />
       {message && (
         <div className="absolute inset-0 flex items-center justify-center p-6">
           <div className="flex flex-col items-center gap-3 text-center">
