@@ -7,7 +7,7 @@ export function formatDuration(ms: number) {
   return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
-export function TrendCard({ trend }: { trend: TrendSummary }) {
+export function TrendCard({ trend, canDelete }: { trend: TrendSummary; canDelete: boolean }) {
   return (
     <article className="flex flex-col gap-3.5 rounded-[1.25rem] border border-border bg-card p-3 pb-4 transition-colors hover:border-primary/60">
       <Link href={`/trends/${trend.id}`} className="group flex flex-1 flex-col gap-3.5 rounded-[0.875rem]">
@@ -33,9 +33,11 @@ export function TrendCard({ trend }: { trend: TrendSummary }) {
           </span>
         </div>
       </Link>
-      <div className="border-t border-border px-1 pt-2">
-        <DeleteTrendButton id={trend.id} title={trend.title} inLibrary />
-      </div>
+      {canDelete && (
+        <div className="border-t border-border px-1 pt-2">
+          <DeleteTrendButton id={trend.id} title={trend.title} inLibrary />
+        </div>
+      )}
     </article>
   );
 }

@@ -83,7 +83,12 @@ export async function deleteTrend(id: string): Promise<boolean> {
 
       // Keep a copy until the row deletion commits. A file error must roll back the row.
       const path = videoFilePath(videoFile);
-      const contents = await readFile(path);
+      const contents = await readFile(path).catch((error) => {
+        // A row whose video is already gone must stay deletable.
+        if (error?.code === "ENOENT") return null;
+        throw error;
+      });
+      if (!contents) return;
       await deleteVideo(videoFile);
       restoreVideo = () => writeFile(path, contents, { flag: "wx" });
     });

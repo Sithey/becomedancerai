@@ -1,6 +1,7 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { AddTrendCard, TrendCard } from "@/components/dance/trend-card";
+import { debugEnabled } from "@/lib/server/debug-attempts";
 import { listTrends } from "@/lib/server/trends";
 
 const STEPS = ["Learn", "Practice", "Full run"];
@@ -8,6 +9,7 @@ const STEPS = ["Learn", "Practice", "Full run"];
 async function TrendsGrid() {
   await connection();
   const trends = await listTrends();
+  const canDelete = debugEnabled();
   return (
     <section aria-labelledby="trends-title" className="flex flex-col gap-5">
       <div className="flex items-baseline justify-between gap-4">
@@ -18,7 +20,7 @@ async function TrendsGrid() {
       </div>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:gap-5">
         {trends.map((trend) => (
-          <TrendCard key={trend.id} trend={trend} />
+          <TrendCard key={trend.id} trend={trend} canDelete={canDelete} />
         ))}
         <AddTrendCard empty={trends.length === 0} />
       </div>
