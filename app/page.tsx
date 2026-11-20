@@ -1,27 +1,29 @@
 import { connection } from "next/server";
 import { Suspense } from "react";
-import { AddTrendCard, TrendCard } from "@/components/dance/trend-card";
+import { TrendCarousel } from "@/components/dance/trend-carousel";
+import { AddTrendCard } from "@/components/dance/trend-card";
 import { listTrends } from "@/lib/server/trends";
 
 const STEPS = ["Learn", "Practice", "Full run"];
 
-async function TrendsGrid() {
+async function TrendingVideos() {
   await connection();
   const trends = await listTrends();
   return (
     <section aria-labelledby="trends-title" className="flex flex-col gap-5">
       <div className="flex items-baseline justify-between gap-4">
         <h2 id="trends-title" className="font-heading text-2xl font-semibold tracking-tight">
-          Trends
+          Trending Videos
         </h2>
         <span className="text-sm text-muted-foreground">{`${trends.length} ${trends.length === 1 ? "trend" : "trends"}`}</span>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 sm:grid-cols-[repeat(auto-fill,minmax(15rem,1fr))] sm:gap-5">
-        {trends.map((trend) => (
-          <TrendCard key={trend.id} trend={trend} />
-        ))}
-        <AddTrendCard empty={trends.length === 0} />
-      </div>
+      {trends.length > 0 ? (
+        <TrendCarousel trends={trends} />
+      ) : (
+        <div className="mx-auto w-full max-w-xs">
+          <AddTrendCard empty />
+        </div>
+      )}
     </section>
   );
 }
@@ -49,7 +51,7 @@ export default function Home() {
         </ol>
       </section>
       <Suspense fallback={<p className="text-muted-foreground">Loading…</p>}>
-        <TrendsGrid />
+        <TrendingVideos />
       </Suspense>
     </main>
   );
