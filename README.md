@@ -5,8 +5,9 @@ tell you what to fix.
 
 [![Watch the 53-second pitch](docs/pitch/poster.jpg)](docs/pitch/becomedancerai-pitch.mp4)
 
-**[Try it live](https://becomedancerai.sharpheberg.com)** · Built overnight at the Ruppin
-programming club "White Night" hackathon (Nov 19–20, 2026).
+**Try it live: [becomedancerai.sharpheberg.com](https://becomedancerai.sharpheberg.com)**
+
+Built overnight at the Ruppin programming club "White Night" hackathon (Nov 19–20, 2026).
 
 ## What it does
 
