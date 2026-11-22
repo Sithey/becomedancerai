@@ -41,12 +41,12 @@ Then open http://localhost:3000. The webcam only works on `localhost` or over HT
 
 ## Team
 
-| | GitHub |
-|---|---|
-| Raphael Zerbib | [@Sithey](https://github.com/Sithey) |
-| Omer Ben Ami | [@omerfinancial123-alt](https://github.com/omerfinancial123-alt) |
-| Ido Butbool | [@idobu11-hue](https://github.com/idobu11-hue) |
-| Or Yackobovitch | [@oryackov-cell](https://github.com/oryackov-cell) |
+| | GitHub | LinkedIn |
+|---|---|---|
+| Raphael Zerbib | [@Sithey](https://github.com/Sithey) | [LinkedIn](https://www.linkedin.com/in/raphael518/) |
+| Omer Ben Ami | [@omerfinancial123-alt](https://github.com/omerfinancial123-alt) | [LinkedIn](https://www.linkedin.com/in/omer-ben-ami-629107375/) |
+| Ido Butbool | [@idobu11-hue](https://github.com/idobu11-hue) | [LinkedIn](https://www.linkedin.com/in/%D7%A2%D7%99%D7%93%D7%95-%D7%91%D7%95%D7%98%D7%91%D7%95%D7%9C-857815450/) |
+| Or Yackobovitch | [@oryackov-cell](https://github.com/oryackov-cell) | [LinkedIn](https://www.linkedin.com/in/%D7%90%D7%95%D7%A8-%D7%99%D7%A2%D7%A7%D7%95%D7%91%D7%95%D7%91%D7%99%D7%A5-870353451/) |
 
 We built it as a team of students working with AI coding agents. The rules they followed are in
 [AGENTS.md](AGENTS.md), how we worked is in [CONTRIBUTING.md](CONTRIBUTING.md) and
